@@ -11,20 +11,30 @@ document.addEventListener("DOMContentLoaded", () => {
     const menuButton = document.querySelector(".menu-button");
     const nav = document.querySelector(".desktop-nav");
 
-    if (menuButton && nav) {
+   if (menuButton && nav) {
 
-        menuButton.addEventListener("click", () => {
+    menuButton.addEventListener("click", () => {
 
-            nav.classList.toggle("mobile-open");
+        nav.classList.toggle("mobile-open");
 
-            menuButton.setAttribute(
-                "aria-expanded",
-                nav.classList.contains("mobile-open")
-            );
+        const isOpen =
+            nav.classList.contains("mobile-open");
 
-        });
+        menuButton.setAttribute(
+            "aria-expanded",
+            isOpen
+        );
 
-    }
+        menuButton.setAttribute(
+            "aria-label",
+            isOpen
+                ? "Close menu"
+                : "Open menu"
+        );
+
+    });
+
+}
 
 
     /* =====================================================
@@ -33,6 +43,25 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const searchInput =
         document.querySelector(".search-box input");
+   const headerSearchButton =
+    document.querySelector(".header-actions .icon-button");
+
+if (headerSearchButton && searchInput) {
+
+    headerSearchButton.addEventListener("click", () => {
+
+        searchInput.scrollIntoView({
+            behavior: "smooth",
+            block: "center"
+        });
+
+        setTimeout(() => {
+            searchInput.focus();
+        }, 400);
+
+    });
+
+}
 
     if (searchInput) {
 
