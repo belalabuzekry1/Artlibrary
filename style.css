@@ -1703,3 +1703,52 @@ button {
 
     color: #ffffff;
 }
+/* =========================================================
+   MOBILE MENU OPEN STATE
+   ========================================================= */
+
+@media (max-width: 760px) {
+
+    .desktop-nav.mobile-open {
+        display: flex;
+
+        position: absolute;
+        top: 70px;
+        left: 15px;
+        right: 15px;
+
+        flex-direction: column;
+        align-items: stretch;
+
+        gap: 0;
+
+        padding: 12px;
+
+        background: rgba(7, 16, 31, 0.98);
+
+        border: 1px solid rgba(255, 255, 255, 0.08);
+
+        border-radius: 16px;
+
+        box-shadow:
+            0 20px 60px rgba(0, 0, 0, 0.4);
+
+        z-index: 200;
+    }
+
+    .desktop-nav.mobile-open a {
+        width: 100%;
+
+        padding: 13px 12px;
+
+        border-radius: 10px;
+
+        color: #dbe5f5;
+    }
+
+    .desktop-nav.mobile-open a:hover {
+        background: rgba(255, 255, 255, 0.06);
+        color: #ffffff;
+    }
+
+}
