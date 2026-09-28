@@ -320,5 +320,53 @@ if (headerSearchButton && searchInput) {
     console.log(
         "AI Images • Prompts • Community"
     );
+/* =========================================================
+   COPY PROMPT
+   ========================================================= */
 
+const copyPromptButtons =
+    document.querySelectorAll(".copy-prompt");
+
+copyPromptButtons.forEach((button) => {
+
+    button.addEventListener("click", async () => {
+
+        const prompt =
+            button.getAttribute("data-prompt");
+
+        if (!prompt) return;
+
+        try {
+
+            await navigator.clipboard.writeText(prompt);
+
+            const originalText =
+                button.innerHTML;
+
+            button.innerHTML =
+                "✓ Prompt Copied!";
+
+            button.classList.add("copied");
+
+            setTimeout(() => {
+
+                button.innerHTML =
+                    originalText;
+
+                button.classList.remove("copied");
+
+            }, 1800);
+
+        } catch (error) {
+
+            console.error(
+                "Could not copy prompt:",
+                error
+            );
+
+        }
+
+    });
+
+});
 });
