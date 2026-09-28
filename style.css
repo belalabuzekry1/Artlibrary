@@ -1927,7 +1927,300 @@ button {
         font-size: 12px;
         line-height: 1.6;
     }
+/* =========================================================
+   ARTWORK DETAILS PAGE
+   ========================================================= */
 
+.artwork-page {
+    padding: 40px 0 90px;
+}
+
+.artwork-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+
+    margin-bottom: 24px;
+
+    color: #94a3b8;
+    text-decoration: none;
+
+    font-size: 14px;
+    font-weight: 600;
+
+    transition: color 0.2s ease;
+}
+
+.artwork-back:hover {
+    color: #ffffff;
+}
+
+
+/* ================= ARTWORK LAYOUT ================= */
+
+.artwork-layout {
+    display: grid;
+
+    grid-template-columns:
+        minmax(0, 1.35fr)
+        minmax(360px, 0.65fr);
+
+    gap: 36px;
+
+    align-items: start;
+}
+
+
+/* ================= MAIN IMAGE ================= */
+
+.artwork-main-image {
+    position: relative;
+
+    overflow: hidden;
+
+    border-radius: 22px;
+
+    background: #0f172a;
+
+    border: 1px solid rgba(255, 255, 255, 0.08);
+
+    box-shadow:
+        0 25px 80px rgba(0, 0, 0, 0.35);
+}
+
+.artwork-main-image img {
+    display: block;
+
+    width: 100%;
+    height: auto;
+
+    max-height: 760px;
+
+    object-fit: cover;
+}
+
+
+/* ================= DETAILS ================= */
+
+.artwork-details {
+    padding-top: 8px;
+}
+
+.artwork-heading {
+    margin-bottom: 28px;
+}
+
+.artwork-category {
+    display: inline-flex;
+
+    padding: 6px 11px;
+
+    margin-bottom: 12px;
+
+    border-radius: 999px;
+
+    background: rgba(109, 75, 255, 0.14);
+
+    border: 1px solid rgba(139, 92, 246, 0.25);
+
+    color: #c4b5fd;
+
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.artwork-heading h1 {
+    margin: 0 0 12px;
+
+    font-size: clamp(30px, 4vw, 46px);
+
+    line-height: 1.1;
+
+    letter-spacing: -1px;
+
+    color: #ffffff;
+}
+
+.artwork-meta {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+
+    color: #94a3b8;
+
+    font-size: 14px;
+}
+
+.artwork-meta span:first-child {
+    color: #c4b5fd;
+}
+
+
+/* ================= PROMPT BOX ================= */
+
+.prompt-box {
+    padding: 22px;
+
+    border-radius: 18px;
+
+    background: rgba(15, 23, 42, 0.75);
+
+    border: 1px solid rgba(255, 255, 255, 0.08);
+
+    box-shadow:
+        0 15px 50px rgba(0, 0, 0, 0.18);
+}
+
+.prompt-header {
+    display: flex;
+
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 15px;
+
+    margin-bottom: 16px;
+}
+
+.prompt-header h2 {
+    margin: 0;
+
+    color: #ffffff;
+
+    font-size: 20px;
+}
+
+
+/* ================= PROMPT TEXT ================= */
+
+.artwork-prompt {
+    margin: 0;
+
+    color: #b6c3d5;
+
+    font-size: 14px;
+
+    line-height: 1.8;
+}
+
+
+/* ================= COPY BUTTON ================= */
+
+.prompt-box .copy-prompt {
+    width: auto;
+
+    min-width: 135px;
+
+    flex-shrink: 0;
+}
+
+
+/* ================= TAGS ================= */
+
+.artwork-tags {
+    display: flex;
+
+    flex-wrap: wrap;
+
+    gap: 8px;
+
+    margin-top: 20px;
+}
+
+.artwork-tags span {
+    padding: 7px 11px;
+
+    border-radius: 999px;
+
+    background: rgba(255, 255, 255, 0.04);
+
+    border: 1px solid rgba(255, 255, 255, 0.08);
+
+    color: #9fb0c7;
+
+    font-size: 12px;
+
+    transition:
+        background 0.2s ease,
+        color 0.2s ease;
+}
+
+.artwork-tags span:hover {
+    background: rgba(109, 75, 255, 0.12);
+
+    color: #d8d0ff;
+}
+
+
+/* ================= FOOTER ================= */
+
+.artwork-page + .site-footer {
+    margin-top: 0;
+}
+
+
+/* =========================================================
+   ARTWORK MOBILE
+   ========================================================= */
+
+@media (max-width: 900px) {
+
+    .artwork-layout {
+        grid-template-columns: 1fr;
+
+        gap: 28px;
+    }
+
+    .artwork-main-image img {
+        max-height: none;
+    }
+
+    .artwork-details {
+        padding-top: 0;
+    }
+
+}
+
+
+@media (max-width: 600px) {
+
+    .artwork-page {
+        padding: 25px 0 60px;
+    }
+
+    .artwork-back {
+        margin-bottom: 18px;
+    }
+
+    .artwork-main-image {
+        border-radius: 16px;
+    }
+
+    .artwork-heading h1 {
+        font-size: 32px;
+    }
+
+    .prompt-box {
+        padding: 17px;
+        border-radius: 15px;
+    }
+
+    .prompt-header {
+        align-items: flex-start;
+
+        flex-direction: column;
+    }
+
+    .prompt-box .copy-prompt {
+        width: 100%;
+    }
+
+    .artwork-prompt {
+        font-size: 13px;
+        line-height: 1.75;
+    }
+
+}
     .copy-prompt {
         padding: 10px 12px;
     }
