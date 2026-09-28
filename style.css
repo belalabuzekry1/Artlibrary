@@ -2226,3 +2226,18 @@ button {
     }
 
 }
+
+/* =========================================================
+   ARTWORK DESKTOP LAYOUT FIX
+   ========================================================= */
+
+@media (min-width: 901px) {
+
+    .artwork-layout {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1.35fr) minmax(360px, 0.65fr) !important;
+        gap: 36px !important;
+        align-items: start !important;
+    }
+
+}
