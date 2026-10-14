@@ -750,6 +750,85 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
     /* =====================================================
+       LATEST ADDITIONS
+       ===================================================== */
+
+    const latestGrid =
+        document.querySelector(
+            ".latest-grid"
+        );
+
+
+    const latestArtworkIds = [
+        "neon-city",
+        "cozy-cat",
+        "elven-warrior",
+        "luxury-watch",
+        "sunset-memories",
+        "modern-dream-house"
+    ];
+
+
+    if (latestGrid) {
+
+        latestGrid.innerHTML = "";
+
+
+        latestArtworkIds.forEach(
+            (artworkId) => {
+
+                const artwork =
+                    artworks[artworkId];
+
+                if (!artwork) return;
+
+
+                const card =
+                    document.createElement("a");
+
+
+                card.className =
+                    "latest-image";
+
+
+                card.href =
+                    `artwork.html?art=${artworkId}`;
+
+
+                card.setAttribute(
+                    "aria-label",
+                    `View ${artwork.title}`
+                );
+
+
+                const image =
+                    document.createElement("img");
+
+
+                image.src =
+                    artwork.image;
+
+
+                image.alt =
+                    artwork.alt;
+
+
+                image.loading =
+                    "lazy";
+
+
+                card.appendChild(image);
+
+
+                latestGrid.appendChild(card);
+
+            }
+        );
+
+    }
+
+
+    /* =====================================================
        COPY PROMPT
        ===================================================== */
 
