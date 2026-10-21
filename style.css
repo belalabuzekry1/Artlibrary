@@ -715,125 +715,54 @@ button {
         rgba(128, 88, 255, 0.45);
 }
 
-.category-image {
-    height: 130px;
-
-    position: relative;
-
-    overflow: hidden;
-}
-
-.category-card strong {
-    display: block;
-
-    padding: 13px 14px 15px;
-
-    font-size: 14px;
-}
-
 
 /* category art */
 
-.cinematic {
-    background:
-        linear-gradient(
-            135deg,
-            #0a0f20,
-            #5830a4,
-            #e98b65
-        );
+.category-image {
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
 }
 
-.anime {
-    background:
-        linear-gradient(
-            145deg,
-            #25125a,
-            #df3277,
-            #ffb870
-        );
+.category-image.cinematic {
+    background-image: url("images/categories/cinematic.jpg") !important;
 }
 
-.realistic {
-    background:
-        linear-gradient(
-            145deg,
-            #12304b,
-            #72a2a8,
-            #d6c7a0
-        );
+.category-image.anime {
+    background-image: url("images/categories/anime.jpg") !important;
 }
 
-.render {
-    background:
-        linear-gradient(
-            145deg,
-            #0e172b,
-            #2766e5,
-            #7c43e9
-        );
+.category-image.realistic {
+    background-image: url("images/categories/realistic.jpg") !important;
 }
 
-.product {
-    background:
-        linear-gradient(
-            145deg,
-            #172030,
-            #b6c5d7,
-            #566c88
-        );
+.category-image.render {
+    background-image: url("images/categories/3d-render.jpg") !important;
 }
 
-.architecture {
-    background:
-        linear-gradient(
-            145deg,
-            #253a52,
-            #879ab2,
-            #d7c1a6
-        );
+.category-image.product {
+    background-image: url("images/categories/product.jpg") !important;
 }
 
-.fantasy {
-    background:
-        linear-gradient(
-            145deg,
-            #101e43,
-            #5543ca,
-            #ec4f9c
-        );
+.category-image.architecture {
+    background-image: url("images/categories/architecture.jpg") !important;
 }
 
-.design {
-    background:
-        linear-gradient(
-            145deg,
-            #102b4d,
-            #2278df,
-            #cb32d5
-        );
+.category-image.fantasy {
+    background-image: url("images/categories/fantasy.jpg") !important;
 }
 
-.illustration {
-    background:
-        linear-gradient(
-            145deg,
-            #3b165d,
-            #ff547f,
-            #ffc567
-        );
+.category-image.design {
+    background-image: url("images/categories/logo-design.jpg") !important;
 }
 
-.nature {
-    background:
-        linear-gradient(
-            145deg,
-            #123c37,
-            #3d916d,
-            #b8b96b
-        );
+.category-image.illustration {
+    background-image: url("images/categories/illustration.jpg") !important;
 }
 
+.category-image.nature {
+    background-image: url("images/categories/nature.jpg") !important;
+}
 
 /* =========================================================
    ART GRID
