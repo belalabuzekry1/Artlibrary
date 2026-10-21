@@ -1,582 +1,235 @@
+
 /* =========================================================
    ARTLIBRARY — INTERACTIONS
    ========================================================= */
 
 document.addEventListener("DOMContentLoaded", () => {
 
-    /* =====================================================
-       MOBILE MENU
-       ===================================================== */
-
-    const menuButton =
-        document.querySelector(".menu-button");
-
-    const nav =
-        document.querySelector(".desktop-nav");
+    /* MOBILE MENU */
+    const menuButton = document.querySelector(".menu-button");
+    const nav = document.querySelector(".desktop-nav");
 
     if (menuButton && nav) {
-
         menuButton.addEventListener("click", () => {
-
             nav.classList.toggle("mobile-open");
+            const isOpen = nav.classList.contains("mobile-open");
 
-            const isOpen =
-                nav.classList.contains("mobile-open");
-
-            menuButton.setAttribute(
-                "aria-expanded",
-                isOpen
-            );
-
+            menuButton.setAttribute("aria-expanded", isOpen);
             menuButton.setAttribute(
                 "aria-label",
-                isOpen
-                    ? "Close menu"
-                    : "Open menu"
+                isOpen ? "Close menu" : "Open menu"
             );
-
         });
-
     }
 
-
-    /* =====================================================
-       SEARCH
-       ===================================================== */
-
-    const searchInput =
-        document.querySelector(".search-box input");
-
-    const headerSearchButton =
-        document.querySelector(
-            ".header-actions .icon-button"
-        );
+    /* SEARCH */
+    const searchInput = document.querySelector(".search-box input");
+    const headerSearchButton = document.querySelector(
+        ".header-actions .icon-button"
+    );
 
     if (headerSearchButton && searchInput) {
-
         headerSearchButton.addEventListener("click", () => {
-
             searchInput.scrollIntoView({
                 behavior: "smooth",
                 block: "center"
             });
 
-            setTimeout(() => {
-                searchInput.focus();
-            }, 400);
-
+            setTimeout(() => searchInput.focus(), 400);
         });
-
     }
 
     if (searchInput) {
-
-        searchInput.addEventListener(
-            "keydown",
-            (event) => {
-
-                if (event.key === "Enter") {
-
-                    const query =
-                        searchInput.value.trim();
-
-                    if (query) {
-
-                        console.log(
-                            "ArtLibrary search:",
-                            query
-                        );
-
-                        alert(
-                            `Searching ArtLibrary for: "${query}"`
-                        );
-
-                    }
-
-                }
-
+        searchInput.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                document.querySelector("#explore")?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start"
+                });
             }
-        );
-
+        });
     }
 
-
-    /* =====================================================
-       SEARCH BUTTON
-       ===================================================== */
-
-    const filterButton =
-        document.querySelector(".filter-button");
+    /* SEARCH BUTTON */
+    const filterButton = document.querySelector(".filter-button");
 
     if (filterButton) {
-
         filterButton.addEventListener("click", () => {
-
-            alert(
-                "Advanced filters will be available soon."
-            );
-
+            alert("Advanced filters will be available soon.");
         });
-
     }
 
-
-    /* =====================================================
-       NEWSLETTER
-       ===================================================== */
-
-    const newsletterForm =
-        document.querySelector(".newsletter-form");
+    /* NEWSLETTER */
+    const newsletterForm = document.querySelector(".newsletter-form");
 
     if (newsletterForm) {
+        newsletterForm.addEventListener("submit", (event) => {
+            event.preventDefault();
 
-        newsletterForm.addEventListener(
-            "submit",
-            (event) => {
+            const emailInput = newsletterForm.querySelector("input");
+            if (!emailInput) return;
 
-                event.preventDefault();
+            const email = emailInput.value.trim();
 
-                const emailInput =
-                    newsletterForm.querySelector("input");
-
-                if (!emailInput) return;
-
-                const email =
-                    emailInput.value.trim();
-
-                if (!email) {
-
-                    alert(
-                        "Please enter your email address."
-                    );
-
-                    return;
-
-                }
-
-                if (!email.includes("@")) {
-
-                    alert(
-                        "Please enter a valid email address."
-                    );
-
-                    return;
-
-                }
-
-                alert(
-                    "Thanks! You're on the ArtLibrary list."
-                );
-
-                emailInput.value = "";
-
-            }
-        );
-
-    }
-
-
-    /* =====================================================
-       SMOOTH SCROLL
-       ===================================================== */
-
-    document
-        .querySelectorAll('a[href^="#"]')
-        .forEach((link) => {
-
-            link.addEventListener(
-                "click",
-                (event) => {
-
-                    const targetId =
-                        link.getAttribute("href");
-
-                    if (
-                        !targetId ||
-                        targetId === "#"
-                    ) {
-                        return;
-                    }
-
-                    const target =
-                        document.querySelector(targetId);
-
-                    if (!target) return;
-
-                    event.preventDefault();
-
-                    target.scrollIntoView({
-                        behavior: "smooth",
-                        block: "start"
-                    });
-
-                    if (
-                        nav &&
-                        nav.classList.contains(
-                            "mobile-open"
-                        )
-                    ) {
-
-                        nav.classList.remove(
-                            "mobile-open"
-                        );
-
-                    }
-
-                }
-            );
-
-        });
-
-
-    /* =====================================================
-       SCROLL REVEAL
-       ===================================================== */
-
-    const revealElements =
-        document.querySelectorAll(
-            ".category-card, .art-card, .latest-image, .model-pill"
-        );
-
-    if ("IntersectionObserver" in window) {
-
-        const observer =
-            new IntersectionObserver(
-                (entries, observerInstance) => {
-
-                    entries.forEach((entry) => {
-
-                        if (!entry.isIntersecting) {
-                            return;
-                        }
-
-                        entry.target.classList.add(
-                            "reveal-visible"
-                        );
-
-                        observerInstance.unobserve(
-                            entry.target
-                        );
-
-                    });
-
-                },
-                {
-                    threshold: 0.08
-                }
-            );
-
-        revealElements.forEach((element) => {
-
-            element.classList.add(
-                "reveal-element"
-            );
-
-            observer.observe(element);
-
-        });
-
-    }
-
-
-    /* =====================================================
-       CURRENT YEAR
-       ===================================================== */
-
-    const yearElements =
-        document.querySelectorAll(
-            "[data-current-year]"
-        );
-
-    yearElements.forEach((element) => {
-
-        element.textContent =
-            new Date().getFullYear();
-
-    });
-
-
-    /* =====================================================
-       ESCAPE KEY
-       ===================================================== */
-
-    document.addEventListener(
-        "keydown",
-        (event) => {
-
-            if (event.key !== "Escape") {
+            if (!email) {
+                alert("Please enter your email address.");
                 return;
             }
 
-            if (
-                nav &&
-                nav.classList.contains("mobile-open")
-            ) {
-
-                nav.classList.remove(
-                    "mobile-open"
-                );
-
+            if (!email.includes("@")) {
+                alert("Please enter a valid email address.");
+                return;
             }
 
-        }
+            alert("Thanks! You're on the ArtLibrary list.");
+            emailInput.value = "";
+        });
+    }
+
+    /* SMOOTH SCROLL */
+    document.querySelectorAll('a[href^="#"]').forEach((link) => {
+        link.addEventListener("click", (event) => {
+            const targetId = link.getAttribute("href");
+
+            if (!targetId || targetId === "#") return;
+
+            const target = document.querySelector(targetId);
+            if (!target) return;
+
+            event.preventDefault();
+
+            target.scrollIntoView({
+                behavior: "smooth",
+                block: "start"
+            });
+
+            if (nav && nav.classList.contains("mobile-open")) {
+                nav.classList.remove("mobile-open");
+            }
+        });
+    });
+
+    /* SCROLL REVEAL */
+    const revealElements = document.querySelectorAll(
+        ".category-card, .art-card, .latest-image, .model-pill"
     );
 
+    if ("IntersectionObserver" in window) {
+        const observer = new IntersectionObserver(
+            (entries, observerInstance) => {
+                entries.forEach((entry) => {
+                    if (!entry.isIntersecting) return;
 
-    /* =====================================================
-       ARTWORK DATA
-       ===================================================== */
+                    entry.target.classList.add("reveal-visible");
+                    observerInstance.unobserve(entry.target);
+                });
+            },
+            { threshold: 0.08 }
+        );
 
+        revealElements.forEach((element) => {
+            element.classList.add("reveal-element");
+            observer.observe(element);
+        });
+    }
+
+    /* CURRENT YEAR */
+    const yearElements = document.querySelectorAll("[data-current-year]");
+
+    yearElements.forEach((element) => {
+        element.textContent = new Date().getFullYear();
+    });
+
+    /* ESCAPE KEY */
+    document.addEventListener("keydown", (event) => {
+        if (event.key !== "Escape") return;
+
+        if (nav && nav.classList.contains("mobile-open")) {
+            nav.classList.remove("mobile-open");
+        }
+    });
+
+    /* ARTWORK DATA */
     const artworks = {
-
         "neon-city": {
-
             title: "Neon City Night",
-
-            image:
-                "images/trending/Neon Cyberpunk City.jfif",
-
-            alt:
-                "Neon City Night",
-
-            category:
-                "Sci-Fi",
-
-            model:
-                "✦ Gemini",
-
-            likes:
-                "♡ 2.4K",
-
-            prompt:
-                "A futuristic cyberpunk city at night after heavy rain, a lone person standing beside a sleek futuristic sports car on a wet reflective street, enormous skyscrapers covered with glowing neon signs, holographic advertisements, flying vehicles in the distance, cinematic blue and magenta lighting, atmospheric fog, dramatic perspective, volumetric light rays, ultra-detailed environment, realistic reflections, cinematic photography, deep depth of field, premium sci-fi concept art, highly detailed, 8k",
-
-            tags: [
-                "Cyberpunk",
-                "City",
-                "Neon",
-                "Sci-Fi",
-                "Cinematic"
-            ]
-
+            image: "images/trending/Neon Cyberpunk City.jfif",
+            alt: "Neon City Night",
+            category: "Sci-Fi",
+            model: "✦ Gemini",
+            likes: "♡ 2.4K",
+            prompt: "A futuristic cyberpunk city at night after heavy rain, a lone person standing beside a sleek futuristic sports car on a wet reflective street, enormous skyscrapers covered with glowing neon signs, holographic advertisements, flying vehicles in the distance, cinematic blue and magenta lighting, atmospheric fog, dramatic perspective, volumetric light rays, ultra-detailed environment, realistic reflections, cinematic photography, deep depth of field, premium sci-fi concept art, highly detailed, 8k",
+            tags: ["Cyberpunk", "City", "Neon", "Sci-Fi", "Cinematic"]
         },
-
 
         "cozy-cat": {
-
             title: "Cozy Cat at Home",
-
-            image:
-                "images/trending/Cozy Cat at Home.png",
-
-            alt:
-                "Cozy Cat at Home",
-
-            category:
-                "Animals",
-
-            model:
-                "✦ ChatGPT",
-
-            likes:
-                "♡ 856",
-
-            prompt:
-                "A beautiful orange tabby cat peacefully sleeping on a soft knitted blanket beside a large sunlit window, warm morning sunlight entering a cozy modern living room, indoor plants, wooden furniture, a small coffee table with a ceramic cup and a few books, soft natural shadows, warm neutral colors, peaceful atmosphere, realistic fur detail, shallow depth of field, professional lifestyle photography, cozy and inviting composition, photorealistic",
-
-            tags: [
-                "Cat",
-                "Animals",
-                "Cozy",
-                "Home",
-                "Photorealistic"
-            ]
-
+            image: "images/trending/Cozy Cat at Home.png",
+            alt: "Cozy Cat at Home",
+            category: "Animals",
+            model: "✦ ChatGPT",
+            likes: "♡ 856",
+            prompt: "A beautiful orange tabby cat peacefully sleeping on a soft knitted blanket beside a large sunlit window, warm morning sunlight entering a cozy modern living room, indoor plants, wooden furniture, a small coffee table with a ceramic cup and a few books, soft natural shadows, warm neutral colors, peaceful atmosphere, realistic fur detail, shallow depth of field, professional lifestyle photography, cozy and inviting composition, photorealistic",
+            tags: ["Cat", "Animals", "Cozy", "Home", "Photorealistic"]
         },
-
 
         "elven-warrior": {
-
             title: "Elven Warrior",
-
-            image:
-                "images/trending/Elven Warrior.jfif",
-
-            alt:
-                "Elven Warrior",
-
-            category:
-                "Fantasy",
-
-            model:
-                "✦ Gemini",
-
-            likes:
-                "♡ 642",
-
-            prompt:
-                "A powerful female elven warrior standing on a mountain overlooking an ancient fantasy kingdom, long silver hair moving gently in the wind, intricate silver and dark blue armor decorated with elegant elven patterns, subtle magical blue light surrounding her, enormous mountains and a medieval fantasy castle in the distance, cinematic sunrise, dramatic clouds, highly detailed face, realistic skin texture, epic composition, cinematic lighting, fantasy concept art, ultra detailed, masterpiece",
-
-            tags: [
-                "Fantasy",
-                "Elf",
-                "Warrior",
-                "Magic",
-                "Concept Art"
-            ]
-
+            image: "images/trending/Elven Warrior.jfif",
+            alt: "Elven Warrior",
+            category: "Fantasy",
+            model: "✦ Gemini",
+            likes: "♡ 642",
+            prompt: "A powerful female elven warrior standing on a mountain overlooking an ancient fantasy kingdom, long silver hair moving gently in the wind, intricate silver and dark blue armor decorated with elegant elven patterns, subtle magical blue light surrounding her, enormous mountains and a medieval fantasy castle in the distance, cinematic sunrise, dramatic clouds, highly detailed face, realistic skin texture, epic composition, cinematic lighting, fantasy concept art, ultra detailed, masterpiece",
+            tags: ["Fantasy", "Elf", "Warrior", "Magic", "Concept Art"]
         },
-
 
         "luxury-watch": {
-
             title: "Luxury Watch",
-
-            image:
-                "images/trending/Luxury Watch.png",
-
-            alt:
-                "Luxury Watch",
-
-            category:
-                "Product",
-
-            model:
-                "✦ ChatGPT",
-
-            likes:
-                "♡ 521",
-
-            prompt:
-                "A premium luxury mechanical wristwatch with a black dial and polished gold details, placed on a dark black marble surface with subtle water droplets, dramatic studio lighting from the side, warm golden highlights reflecting across the metal, extremely detailed watch mechanism and dial, elegant luxury advertising aesthetic, shallow depth of field, realistic reflections, sophisticated dark background, professional commercial product photography, photorealistic, ultra sharp, premium high-end campaign",
-
-            tags: [
-                "Watch",
-                "Luxury",
-                "Product",
-                "Advertising",
-                "Photography"
-            ]
-
+            image: "images/trending/Luxury Watch.png",
+            alt: "Luxury Watch",
+            category: "Product",
+            model: "✦ ChatGPT",
+            likes: "♡ 521",
+            prompt: "A premium luxury mechanical wristwatch with a black dial and polished gold details, placed on a dark black marble surface with subtle water droplets, dramatic studio lighting from the side, warm golden highlights reflecting across the metal, extremely detailed watch mechanism and dial, elegant luxury advertising aesthetic, shallow depth of field, realistic reflections, sophisticated dark background, professional commercial product photography, photorealistic, ultra sharp, premium high-end campaign",
+            tags: ["Watch", "Luxury", "Product", "Advertising", "Photography"]
         },
-
 
         "sunset-memories": {
-
             title: "Sunset Memories",
-
-            image:
-                "images/trending/Anime Sunset Portrait.jfif",
-
-            alt:
-                "Sunset Memories",
-
-            category:
-                "Anime",
-
-            model:
-                "✦ Gemini",
-
-            likes:
-                "♡ 927",
-
-            prompt:
-                "A beautiful young anime woman with short dark brown hair standing on a rooftop overlooking a modern city at sunset, warm orange and pink sky, soft wind moving her hair, gentle emotional expression, detailed expressive eyes, casual modern clothing, glowing city lights beginning to appear in the background, cinematic composition, beautiful rim lighting, atmospheric depth, highly detailed anime illustration, polished digital art, vibrant but elegant colors, professional anime key visual",
-
-            tags: [
-                "Anime",
-                "Portrait",
-                "Sunset",
-                "City",
-                "Illustration"
-            ]
-
+            image: "images/trending/Anime Sunset Portrait.jfif",
+            alt: "Sunset Memories",
+            category: "Anime",
+            model: "✦ Gemini",
+            likes: "♡ 927",
+            prompt: "A beautiful young anime woman with short dark brown hair standing on a rooftop overlooking a modern city at sunset, warm orange and pink sky, soft wind moving her hair, gentle emotional expression, detailed expressive eyes, casual modern clothing, glowing city lights beginning to appear in the background, cinematic composition, beautiful rim lighting, atmospheric depth, highly detailed anime illustration, polished digital art, vibrant but elegant colors, professional anime key visual",
+            tags: ["Anime", "Portrait", "Sunset", "City", "Illustration"]
         },
 
-
         "modern-dream-house": {
-
             title: "Modern Dream House",
-
-            image:
-                "images/trending/Modern Dream House.png",
-
-            alt:
-                "Modern Dream House",
-
-            category:
-                "Architecture",
-
-            model:
-                "✦ ChatGPT",
-
-            likes:
-                "♡ 459",
-
-            prompt:
-                "A stunning modern luxury villa with floor-to-ceiling glass walls, clean minimalist architecture, surrounded by tropical palm trees and lush landscaping, large infinity pool reflecting the house and evening sky, warm interior lights glowing through the glass, elegant outdoor lounge area, dramatic sunset clouds, cinematic architectural photography, realistic materials and reflections, sophisticated composition, ultra realistic, high-end architectural visualization, detailed lighting, premium real estate photography",
-
-            tags: [
-                "Architecture",
-                "Villa",
-                "Modern",
-                "Luxury",
-                "Real Estate"
-            ]
-
+            image: "images/trending/Modern Dream House.png",
+            alt: "Modern Dream House",
+            category: "Architecture",
+            model: "✦ ChatGPT",
+            likes: "♡ 459",
+            prompt: "A stunning modern luxury villa with floor-to-ceiling glass walls, clean minimalist architecture, surrounded by tropical palm trees and lush landscaping, large infinity pool reflecting the house and evening sky, warm interior lights glowing through the glass, elegant outdoor lounge area, dramatic sunset clouds, cinematic architectural photography, realistic materials and reflections, sophisticated composition, ultra realistic, high-end architectural visualization, detailed lighting, premium real estate photography",
+            tags: ["Architecture", "Villa", "Modern", "Luxury", "Real Estate"]
         }
-
     };
 
+    /* ARTWORK DETAILS PAGE */
+    const artworkImage = document.querySelector(".artwork-main-image img");
+    const artworkTitle = document.querySelector(".artwork-heading h1");
+    const artworkCategory = document.querySelector(".artwork-category");
+    const artworkMeta = document.querySelectorAll(".artwork-meta span");
+    const artworkPrompt = document.querySelector(".artwork-prompt");
+    const copyPromptButton = document.querySelector(".copy-prompt");
+    const artworkTags = document.querySelector(".artwork-tags");
 
-    /* =====================================================
-       ARTWORK DETAILS PAGE
-       ===================================================== */
-
-    const artworkImage =
-        document.querySelector(
-            ".artwork-main-image img"
-        );
-
-    const artworkTitle =
-        document.querySelector(
-            ".artwork-heading h1"
-        );
-
-    const artworkCategory =
-        document.querySelector(
-            ".artwork-category"
-        );
-
-    const artworkMeta =
-        document.querySelectorAll(
-            ".artwork-meta span"
-        );
-
-    const artworkPrompt =
-        document.querySelector(
-            ".artwork-prompt"
-        );
-
-    const copyPromptButton =
-        document.querySelector(
-            ".copy-prompt"
-        );
-
-    const artworkTags =
-        document.querySelector(
-            ".artwork-tags"
-        );
-
-
-    const params =
-        new URLSearchParams(
-            window.location.search
-        );
-
-    const artworkId =
-        params.get("art");
-
+    const params = new URLSearchParams(window.location.search);
+    const artworkId = params.get("art");
 
     if (
         artworkId &&
@@ -584,87 +237,36 @@ document.addEventListener("DOMContentLoaded", () => {
         artworkImage &&
         artworkTitle
     ) {
+        const artwork = artworks[artworkId];
 
-        const artwork =
-            artworks[artworkId];
+        artworkImage.src = artwork.image;
+        artworkImage.alt = artwork.alt;
+        artworkTitle.textContent = artwork.title;
 
-
-        artworkImage.src =
-            artwork.image;
-
-        artworkImage.alt =
-            artwork.alt;
-
-
-        artworkTitle.textContent =
-            artwork.title;
-
-
-        artworkCategory.textContent =
-            artwork.category;
-
-
-        if (artworkMeta[0]) {
-
-            artworkMeta[0].textContent =
-                artwork.model;
-
+        if (artworkCategory) {
+            artworkCategory.textContent = artwork.category;
         }
 
-        if (artworkMeta[1]) {
+        if (artworkMeta[0]) artworkMeta[0].textContent = artwork.model;
+        if (artworkMeta[1]) artworkMeta[1].textContent = artwork.likes;
 
-            artworkMeta[1].textContent =
-                artwork.likes;
-
-        }
-
-
-        if (artworkPrompt) {
-
-            artworkPrompt.textContent =
-                artwork.prompt;
-
-        }
-
+        if (artworkPrompt) artworkPrompt.textContent = artwork.prompt;
 
         if (copyPromptButton) {
-
-            copyPromptButton.setAttribute(
-                "data-prompt",
-                artwork.prompt
-            );
-
+            copyPromptButton.setAttribute("data-prompt", artwork.prompt);
         }
-
 
         if (artworkTags) {
-
-            artworkTags.innerHTML =
-                artwork.tags
-                    .map(
-                        (tag) =>
-                            `<span>${tag}</span>`
-                    )
-                    .join("");
-
+            artworkTags.innerHTML = artwork.tags
+                .map((tag) => `<span>${tag}</span>`)
+                .join("");
         }
 
-
-        document.title =
-            `${artwork.title} | ArtLibrary`;
-
+        document.title = `${artwork.title} | ArtLibrary`;
     }
 
-
-    /* =====================================================
-       TRENDING ARTWORK LINKS
-       ===================================================== */
-
-    const trendingCards =
-        document.querySelectorAll(
-            ".art-card"
-        );
-
+    /* TRENDING ARTWORK LINKS */
+    const trendingCards = document.querySelectorAll(".art-card");
 
     const trendingArtworkIds = [
         "neon-city",
@@ -675,89 +277,30 @@ document.addEventListener("DOMContentLoaded", () => {
         "modern-dream-house"
     ];
 
+    trendingCards.forEach((card, index) => {
+        const artworkId = trendingArtworkIds[index];
+        if (!artworkId) return;
 
-    trendingCards.forEach(
-        (card, index) => {
+        card.setAttribute("role", "link");
+        card.setAttribute("tabindex", "0");
 
-            const artworkId =
-                trendingArtworkIds[index];
+        card.addEventListener("click", (event) => {
+            if (event.target.closest(".copy-prompt")) return;
+            if (event.target.closest("a, button")) return;
 
-            if (!artworkId) return;
+            window.location.href = `artwork.html?art=${artworkId}`;
+        });
 
+        card.addEventListener("keydown", (event) => {
+            if (event.key !== "Enter" && event.key !== " ") return;
 
-            card.setAttribute(
-                "role",
-                "link"
-            );
+            event.preventDefault();
+            window.location.href = `artwork.html?art=${artworkId}`;
+        });
+    });
 
-            card.setAttribute(
-                "tabindex",
-                "0"
-            );
-
-
-            card.addEventListener(
-                "click",
-                (event) => {
-
-                    if (
-                        event.target.closest(
-                            ".copy-prompt"
-                        )
-                    ) {
-                        return;
-                    }
-
-                    if (
-                        event.target.closest(
-                            "a, button"
-                        )
-                    ) {
-                        return;
-                    }
-
-
-                    window.location.href =
-                        `artwork.html?art=${artworkId}`;
-
-                }
-            );
-
-
-            card.addEventListener(
-                "keydown",
-                (event) => {
-
-                    if (
-                        event.key !== "Enter" &&
-                        event.key !== " "
-                    ) {
-                        return;
-                    }
-
-
-                    event.preventDefault();
-
-
-                    window.location.href =
-                        `artwork.html?art=${artworkId}`;
-
-                }
-            );
-
-        }
-    );
-
-
-    /* =====================================================
-       LATEST ADDITIONS
-       ===================================================== */
-
-    const latestGrid =
-        document.querySelector(
-            ".latest-grid"
-        );
-
+    /* LATEST ADDITIONS */
+    const latestGrid = document.querySelector(".latest-grid");
 
     const latestArtworkIds = [
         "neon-city",
@@ -768,257 +311,209 @@ document.addEventListener("DOMContentLoaded", () => {
         "modern-dream-house"
     ];
 
-
     if (latestGrid) {
-
         latestGrid.innerHTML = "";
 
+        latestArtworkIds.forEach((artworkId) => {
+            const artwork = artworks[artworkId];
+            if (!artwork) return;
 
-        latestArtworkIds.forEach(
-            (artworkId) => {
+            const card = document.createElement("a");
+            card.className = "latest-image";
+            card.href = `artwork.html?art=${artworkId}`;
+            card.setAttribute("aria-label", `View ${artwork.title}`);
 
-                const artwork =
-                    artworks[artworkId];
+            const image = document.createElement("img");
+            image.src = artwork.image;
+            image.alt = artwork.alt;
+            image.loading = "lazy";
 
-                if (!artwork) return;
-
-
-                const card =
-                    document.createElement("a");
-
-
-                card.className =
-                    "latest-image";
-
-
-                card.href =
-                    `artwork.html?art=${artworkId}`;
-
-
-                card.setAttribute(
-                    "aria-label",
-                    `View ${artwork.title}`
-                );
-
-
-                const image =
-                    document.createElement("img");
-
-
-                image.src =
-                    artwork.image;
-
-
-                image.alt =
-                    artwork.alt;
-
-
-                image.loading =
-                    "lazy";
-
-
-                card.appendChild(image);
-
-
-                latestGrid.appendChild(card);
-
-            }
-        );
-
+            card.appendChild(image);
+            latestGrid.appendChild(card);
+        });
     }
 
+    /* COPY PROMPT */
+    const copyPromptButtons = document.querySelectorAll(".copy-prompt");
 
-    /* =====================================================
-       COPY PROMPT
-       ===================================================== */
+    copyPromptButtons.forEach((button) => {
+        button.addEventListener("click", async () => {
+            const prompt = button.getAttribute("data-prompt");
+            if (!prompt) return;
 
-    const copyPromptButtons =
-        document.querySelectorAll(
-            ".copy-prompt"
-        );
+            try {
+                await navigator.clipboard.writeText(prompt);
 
+                const originalText = button.innerHTML;
+                button.innerHTML = "✓ Prompt Copied!";
+                button.classList.add("copied");
 
-    copyPromptButtons.forEach(
-        (button) => {
+                setTimeout(() => {
+                    button.innerHTML = originalText;
+                    button.classList.remove("copied");
+                }, 1800);
+            } catch (error) {
+                console.error("Could not copy prompt:", error);
+            }
+        });
+    });
 
-            button.addEventListener(
-                "click",
-                async () => {
-
-                    const prompt =
-                        button.getAttribute(
-                            "data-prompt"
-                        );
-
-                    if (!prompt) return;
-
-
-                    try {
-
-                        await navigator.clipboard.writeText(
-                            prompt
-                        );
-
-
-                        const originalText =
-                            button.innerHTML;
-
-
-                        button.innerHTML =
-                            "✓ Prompt Copied!";
-
-
-                        button.classList.add(
-                            "copied"
-                        );
-
-
-                        setTimeout(
-                            () => {
-
-                                button.innerHTML =
-                                    originalText;
-
-                                button.classList.remove(
-                                    "copied"
-                                );
-
-                            },
-                            1800
-                        );
-
-
-                    } catch (error) {
-
-                        console.error(
-                            "Could not copy prompt:",
-                            error
-                        );
-
-                    }
-
-                }
-            );
-
-        }
-    );
-
-
-    /* =====================================================
-       CONSOLE MESSAGE
-       ===================================================== */
-
-    console.log(
-        "%cArtLibrary",
-        "font-size:24px;font-weight:bold;"
-    );
-
-    console.log(
-        "AI Images • Prompts • Community"
-    );
+    /* CONSOLE MESSAGE */
+    console.log("%cArtLibrary", "font-size:24px;font-weight:bold;");
+    console.log("AI Images • Prompts • Community");
 
 });
 
-/* ArtLibrary category filtering */
+/* ArtLibrary search + category filtering */
 document.addEventListener("DOMContentLoaded", function () {
-    const categoryCards = document.querySelectorAll(
-        "#categories .category-card"
+    const categoryCards = Array.from(
+        document.querySelectorAll("#categories .category-card")
     );
+    const searchInput = document.querySelector(".search-box input");
+    const trendingSection = document.querySelector("#explore");
     const trendingGrid = document.querySelector("#explore .art-grid");
     const trendingHeading = document.querySelector("#explore .section-heading");
+    const headingTitle = document.querySelector("#explore .section-heading h2");
 
-    if (!categoryCards.length || !trendingGrid || !trendingHeading) return;
+    if (!trendingGrid || !trendingHeading || !headingTitle) return;
 
-    const artworks = Array.from(
-        trendingGrid.querySelectorAll(".art-card")
-    );
-
+    const artworks = Array.from(trendingGrid.querySelectorAll(".art-card"));
     if (!artworks.length) return;
 
-    const categoryMap = {
-        "cinematic": ["sci-fi"],
+    const categoryTerms = {
+        "cinematic": ["sci-fi", "cinematic", "cyberpunk", "movie"],
         "anime": ["anime"],
-        "realistic": ["realistic"],
-        "3d & render": ["3d & render", "3d", "render"],
-        "product": ["product"],
-        "architecture": ["architecture"],
-        "fantasy": ["fantasy"],
-        "logo & design": ["logo & design", "logo", "design"],
-        "illustration": ["illustration"],
-        "nature": ["nature"]
+        "realistic": ["realistic", "photorealistic", "photoreal", "realism"],
+        "3d & render": ["3d", "render", "cgi", "three-dimensional"],
+        "product": ["product", "commercial", "watch", "advertising"],
+        "architecture": ["architecture", "architectural", "villa", "building"],
+        "fantasy": ["fantasy", "elf", "elven", "magic", "warrior"],
+        "logo & design": ["logo", "design", "branding", "graphic"],
+        "illustration": ["illustration", "illustrated", "digital art", "concept art"],
+        "nature": ["nature", "landscape", "forest", "mountain", "plant", "flower"]
     };
+
+    let activeCategory = "all";
+    let activeCard = null;
 
     const allButton = document.createElement("button");
     allButton.type = "button";
     allButton.textContent = "All";
     allButton.className = "category-filter-all";
     allButton.setAttribute("aria-pressed", "true");
-
     trendingHeading.appendChild(allButton);
 
     const emptyMessage = document.createElement("p");
     emptyMessage.className = "category-empty-message";
     emptyMessage.textContent =
-        "No artworks in this category yet. Check back soon.";
+        "No matching artworks found. Try another search or category.";
     emptyMessage.hidden = true;
     trendingGrid.insertAdjacentElement("afterend", emptyMessage);
 
-    function setActiveCard(activeCard) {
-        categoryCards.forEach(function (card) {
-            card.classList.toggle("is-active", card === activeCard);
-        });
+    function normalize(value) {
+        return (value || "").toLowerCase().replace(/\s+/g, " ").trim();
     }
 
-    function filterArtworks(category, activeCard) {
-        const allowedCategories = categoryMap[category] || [];
+    function artworkText(card) {
+        return normalize([
+            card.querySelector("h3")?.textContent,
+            card.querySelector(".category")?.textContent,
+            card.querySelector(".model")?.textContent,
+            card.querySelector(".prompt-text")?.textContent,
+            card.querySelector(".copy-prompt")?.getAttribute("data-prompt")
+        ].filter(Boolean).join(" "));
+    }
+
+    function matchesCategory(card, category) {
+        if (category === "all") return true;
+
+        const terms = categoryTerms[category] || [category];
+        const label = normalize(card.querySelector(".category")?.textContent);
+        const content = artworkText(card);
+
+        return terms.some(
+            term => label.includes(term) || content.includes(term)
+        );
+    }
+
+    function renderResults(shouldScroll = false) {
+        const query = normalize(searchInput?.value);
+        const words = query.split(" ").filter(Boolean);
         let visibleCount = 0;
 
-        artworks.forEach(function (artwork) {
-            const categoryLabel = artwork.querySelector(".category");
-            const label = categoryLabel
-                ? categoryLabel.textContent.trim().toLowerCase()
-                : "";
+        artworks.forEach(card => {
+            const text = artworkText(card);
+            const matchesSearch = words.every(word => text.includes(word));
+            const matchesCurrentCategory = matchesCategory(card, activeCategory);
+            const visible = matchesSearch && matchesCurrentCategory;
 
-            const shouldShow =
-                category === "all" ||
-                allowedCategories.includes(label);
-
-            artwork.hidden = !shouldShow;
-
-            if (shouldShow) visibleCount++;
+            card.hidden = !visible;
+            if (visible) visibleCount++;
         });
 
         emptyMessage.hidden = visibleCount > 0;
+
         allButton.setAttribute(
             "aria-pressed",
-            category === "all" ? "true" : "false"
+            activeCategory === "all" ? "true" : "false"
         );
 
-        setActiveCard(activeCard);
+        categoryCards.forEach(card => {
+            card.classList.toggle("is-active", card === activeCard);
+        });
 
-        document.querySelector("#explore h2").textContent =
-            category === "all"
-                ? "🔥 Trending This Week"
-                : "Explore: " + activeCard.querySelector("strong").textContent;
+        if (query) {
+            headingTitle.textContent =
+                `Search results: ${searchInput.value.trim()}`;
+        } else if (activeCategory !== "all") {
+            const label =
+                activeCard?.querySelector("strong")?.textContent ||
+                activeCategory;
 
-        document.querySelector("#explore").scrollIntoView({
-            behavior: "smooth",
-            block: "start"
+            headingTitle.textContent = `Explore: ${label}`;
+        } else {
+            headingTitle.textContent = "🔥 Trending This Week";
+        }
+
+        if (shouldScroll && trendingSection) {
+            trendingSection.scrollIntoView({
+                behavior: "smooth",
+                block: "start"
+            });
+        }
+    }
+
+    categoryCards.forEach(card => {
+        card.addEventListener("click", event => {
+            event.preventDefault();
+
+            activeCard = card;
+            activeCategory = normalize(
+                card.querySelector("strong")?.textContent
+            );
+
+            if (searchInput) searchInput.value = "";
+
+            renderResults(true);
+        });
+    });
+
+    allButton.addEventListener("click", () => {
+        activeCategory = "all";
+        activeCard = null;
+
+        if (searchInput) searchInput.value = "";
+
+        renderResults(true);
+    });
+
+    if (searchInput) {
+        searchInput.addEventListener("input", () => {
+            activeCategory = "all";
+            activeCard = null;
+            renderResults(false);
         });
     }
 
-    categoryCards.forEach(function (card) {
-        card.addEventListener("click", function (event) {
-            event.preventDefault();
-
-            const label = card.querySelector("strong")
-                .textContent.trim().toLowerCase();
-
-            filterArtworks(label, card);
-        });
-    });
-
-    allButton.addEventListener("click", function () {
-        filterArtworks("all", null);
-    });
+    renderResults(false);
 });
