@@ -918,3 +918,107 @@ document.addEventListener("DOMContentLoaded", () => {
     );
 
 });
+
+/* ArtLibrary category filtering */
+document.addEventListener("DOMContentLoaded", function () {
+    const categoryCards = document.querySelectorAll(
+        "#categories .category-card"
+    );
+    const trendingGrid = document.querySelector("#explore .art-grid");
+    const trendingHeading = document.querySelector("#explore .section-heading");
+
+    if (!categoryCards.length || !trendingGrid || !trendingHeading) return;
+
+    const artworks = Array.from(
+        trendingGrid.querySelectorAll(".art-card")
+    );
+
+    if (!artworks.length) return;
+
+    const categoryMap = {
+        "cinematic": ["sci-fi"],
+        "anime": ["anime"],
+        "realistic": ["realistic"],
+        "3d & render": ["3d & render", "3d", "render"],
+        "product": ["product"],
+        "architecture": ["architecture"],
+        "fantasy": ["fantasy"],
+        "logo & design": ["logo & design", "logo", "design"],
+        "illustration": ["illustration"],
+        "nature": ["nature"]
+    };
+
+    const allButton = document.createElement("button");
+    allButton.type = "button";
+    allButton.textContent = "All";
+    allButton.className = "category-filter-all";
+    allButton.setAttribute("aria-pressed", "true");
+
+    trendingHeading.appendChild(allButton);
+
+    const emptyMessage = document.createElement("p");
+    emptyMessage.className = "category-empty-message";
+    emptyMessage.textContent =
+        "No artworks in this category yet. Check back soon.";
+    emptyMessage.hidden = true;
+    trendingGrid.insertAdjacentElement("afterend", emptyMessage);
+
+    function setActiveCard(activeCard) {
+        categoryCards.forEach(function (card) {
+            card.classList.toggle("is-active", card === activeCard);
+        });
+    }
+
+    function filterArtworks(category, activeCard) {
+        const allowedCategories = categoryMap[category] || [];
+        let visibleCount = 0;
+
+        artworks.forEach(function (artwork) {
+            const categoryLabel = artwork.querySelector(".category");
+            const label = categoryLabel
+                ? categoryLabel.textContent.trim().toLowerCase()
+                : "";
+
+            const shouldShow =
+                category === "all" ||
+                allowedCategories.includes(label);
+
+            artwork.hidden = !shouldShow;
+
+            if (shouldShow) visibleCount++;
+        });
+
+        emptyMessage.hidden = visibleCount > 0;
+        allButton.setAttribute(
+            "aria-pressed",
+            category === "all" ? "true" : "false"
+        );
+
+        setActiveCard(activeCard);
+
+        document.querySelector("#explore h2").textContent =
+            category === "all"
+                ? "🔥 Trending This Week"
+                : "Explore: " + activeCard.querySelector("strong").textContent;
+
+        document.querySelector("#explore").scrollIntoView({
+            behavior: "smooth",
+            block: "start"
+        });
+    }
+
+    categoryCards.forEach(function (card) {
+        card.addEventListener("click", function (event) {
+            event.preventDefault();
+
+            const label = card.querySelector("strong")
+                .textContent.trim().toLowerCase();
+
+            filterArtworks(label, card);
+        });
+    });
+
+    allButton.addEventListener("click", function () {
+        filterArtworks("all", null);
+    });
+});
