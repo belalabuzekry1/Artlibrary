@@ -553,3 +553,23 @@ document.querySelectorAll(".popular-searches a").forEach(function (link) {
         });
     });
 });
+
+/* Permanent Popular Searches Fix */
+document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll(".popular-searches a").forEach(function (link) {
+        link.addEventListener("click", function (event) {
+            event.preventDefault();
+
+            const input = document.querySelector(".search-box input");
+            if (!input) return;
+
+            input.value = this.textContent.trim();
+            input.dispatchEvent(new Event("input", { bubbles: true }));
+
+            document.querySelector("#explore")?.scrollIntoView({
+                behavior: "smooth",
+                block: "start"
+            });
+        });
+    });
+});
