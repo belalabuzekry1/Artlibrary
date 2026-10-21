@@ -2505,3 +2505,37 @@ button {
         transition: none;
     }
 }
+
+/* Category filter controls */
+.category-filter-all {
+    margin-left: auto;
+    padding: 8px 14px;
+    border: 1px solid rgba(143, 117, 255, 0.4);
+    border-radius: 10px;
+    background: #171d37;
+    color: #e8ebff;
+    cursor: pointer;
+}
+
+.category-filter-all:hover {
+    border-color: #8f75ff;
+}
+
+.category-card.is-active {
+    border-color: #8f75ff;
+    box-shadow: 0 0 0 1px rgba(143, 117, 255, 0.15);
+}
+
+.category-empty-message {
+    margin-top: 18px;
+    color: #aeb7d8;
+    text-align: center;
+}
+
+.category-empty-message[hidden] {
+    display: none;
+}
+
+#explore .art-card[hidden] {
+    display: none !important;
+}
