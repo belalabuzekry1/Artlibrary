@@ -517,3 +517,85 @@ document.addEventListener("DOMContentLoaded", function () {
 
     renderResults(false);
 });
+
+/* ArtLibrary — Working popular searches and basic search */
+document.addEventListener("DOMContentLoaded", function () {
+    const searchInput = document.querySelector(".search-box input");
+    const popularLinks = document.querySelectorAll(".popular-searches a");
+    const artworkCards = document.querySelectorAll("#explore .art-card");
+    const exploreHeading = document.querySelector("#explore .section-heading h2");
+
+    if (!searchInput || !artworkCards.length) return;
+
+    function runSearch(query) {
+        const term = query.trim().toLowerCase();
+        let visibleCount = 0;
+
+        artworkCards.forEach(function (card) {
+            const searchableText = [
+                card.textContent,
+                card.querySelector("img")?.alt || "",
+                card.querySelector("img")?.getAttribute("src") || ""
+            ].join(" ").toLowerCase();
+
+            const matches = !term || searchableText.includes(term);
+            card.hidden = !matches;
+
+            if (matches) visibleCount++;
+        });
+
+        if (exploreHeading) {
+            exploreHeading.textContent = term
+                ? `Search results for "${query.trim()}"`
+                : "Trending AI Art";
+        }
+
+        let message = document.querySelector(".artlibrary-search-empty");
+
+        if (!message) {
+            message = document.createElement("p");
+            message.className = "artlibrary-search-empty";
+            message.textContent = "No matching artworks found. Try another search.";
+            message.hidden = true;
+            const grid = document.querySelector("#explore .art-grid");
+            if (grid) grid.insertAdjacentElement("afterend", message);
+        }
+
+        message.hidden = visibleCount > 0;
+
+        document.querySelector("#explore")?.scrollIntoView({
+            behavior: "smooth",
+            block: "start"
+        });
+    }
+
+    popularLinks.forEach(function (link) {
+        link.addEventListener("click", function (event) {
+            event.preventDefault();
+            const query = link.textContent.trim();
+            searchInput.value = query;
+            runSearch(query);
+        });
+    });
+
+    searchInput.addEventListener("keydown", function (event) {
+        if (event.key !== "Enter") return;
+
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        runSearch(searchInput.value);
+    }, true);
+
+    searchInput.addEventListener("input", function () {
+        if (!searchInput.value.trim()) runSearch("");
+    });
+
+    const allButton = document.querySelector(".category-filter-all");
+
+    if (allButton) {
+        allButton.addEventListener("click", function () {
+            searchInput.value = "";
+            runSearch("");
+        });
+    }
+});
