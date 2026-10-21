@@ -532,3 +532,24 @@ document.querySelectorAll(".popular-searches a").forEach(link => {
 
 renderResults(false);
 });
+
+/* ArtLibrary — Permanent Popular Searches Fix */
+document.querySelectorAll(".popular-searches a").forEach(function (link) {
+    link.addEventListener("click", function (event) {
+        event.preventDefault();
+
+        const searchInput = document.querySelector(".search-box input");
+        if (!searchInput) return;
+
+        searchInput.value = this.textContent.trim();
+
+        searchInput.dispatchEvent(
+            new Event("input", { bubbles: true })
+        );
+
+        document.querySelector("#explore")?.scrollIntoView({
+            behavior: "smooth",
+            block: "start"
+        });
+    });
+});
