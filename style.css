@@ -2654,3 +2654,16 @@ body[data-theme="light"] .mobile-menu {
         place-items: center;
     }
 }
+
+/* ArtLibrary logo sizing */
+.site-logo {
+    display: block;
+    width: 165px;
+    height: auto;
+    object-fit: contain;
+}
+
+/* Light theme: keep logo crisp */
+body[data-theme="light"] .site-logo {
+    filter: none;
+}
