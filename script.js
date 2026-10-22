@@ -686,11 +686,19 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function applyTheme(theme) {
         if (theme === "light") {
+           const logo = document.querySelector(".site-logo");
+if (logo) {
+    logo.src = logo.dataset.lightLogo;
+}
             document.body.setAttribute("data-theme", "light");
             themeButton.textContent = "☾";
             themeButton.setAttribute("aria-label", "Switch to dark theme");
             themeButton.setAttribute("title", "Switch to dark theme");
         } else {
+           const logo = document.querySelector(".site-logo");
+if (logo) {
+    logo.src = logo.dataset.darkLogo;
+}
             document.body.removeAttribute("data-theme");
             themeButton.textContent = "☼";
             themeButton.setAttribute("aria-label", "Switch to light theme");
