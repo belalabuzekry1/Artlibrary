@@ -684,21 +684,31 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (!themeButton) return;
 
-    function applyTheme(theme) {
-        if (theme === "light") {
-           const logo = document.querySelector(".site-logo");
-if (logo) {
-    logo.src = logo.dataset.lightLogo;
+    
+function applyTheme(theme) {
+    const logo = document.querySelector(".site-logo");
+
+    if (theme === "light") {
+        document.body.setAttribute("data-theme", "light");
+        themeButton.textContent = "☾";
+        themeButton.setAttribute("aria-label", "Switch to dark theme");
+        themeButton.setAttribute("title", "Switch to dark theme");
+
+        if (logo) {
+            logo.src = logo.dataset.lightLogo;
+        }
+    } else {
+        document.body.removeAttribute("data-theme");
+        themeButton.textContent = "☼";
+        themeButton.setAttribute("aria-label", "Switch to light theme");
+        themeButton.setAttribute("title", "Switch to light theme");
+
+        if (logo) {
+            logo.src = logo.dataset.darkLogo;
+        }
+    }
 }
-            document.body.setAttribute("data-theme", "light");
-            themeButton.textContent = "☾";
-            themeButton.setAttribute("aria-label", "Switch to dark theme");
-            themeButton.setAttribute("title", "Switch to dark theme");
-        } else {
-           const logo = document.querySelector(".site-logo");
-if (logo) {
-    logo.src = logo.dataset.darkLogo;
-}
+
             document.body.removeAttribute("data-theme");
             themeButton.textContent = "☼";
             themeButton.setAttribute("aria-label", "Switch to light theme");
