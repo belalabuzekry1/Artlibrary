@@ -676,3 +676,46 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 });
 // ArtLibrary deployment refresh
+
+/* ArtLibrary — Light/Dark Theme Toggle */
+
+document.addEventListener("DOMContentLoaded", function () {
+    const themeButton = document.querySelector(".theme-button");
+
+    if (!themeButton) return;
+
+    function applyTheme(theme) {
+        if (theme === "light") {
+            document.body.setAttribute("data-theme", "light");
+            themeButton.textContent = "☾";
+            themeButton.setAttribute("aria-label", "Switch to dark theme");
+            themeButton.setAttribute("title", "Switch to dark theme");
+        } else {
+            document.body.removeAttribute("data-theme");
+            themeButton.textContent = "☼";
+            themeButton.setAttribute("aria-label", "Switch to light theme");
+            themeButton.setAttribute("title", "Switch to light theme");
+        }
+    }
+
+    let savedTheme = "dark";
+
+    try {
+        savedTheme = localStorage.getItem("artlibrary-theme") || "dark";
+    } catch (error) {}
+
+    applyTheme(savedTheme);
+
+    themeButton.addEventListener("click", function () {
+        const nextTheme =
+            document.body.getAttribute("data-theme") === "light"
+                ? "dark"
+                : "light";
+
+        applyTheme(nextTheme);
+
+        try {
+            localStorage.setItem("artlibrary-theme", nextTheme);
+        } catch (error) {}
+    });
+});
