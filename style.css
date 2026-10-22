@@ -2539,3 +2539,118 @@ button {
 #explore .art-card[hidden] {
     display: none !important;
 }
+
+/* =====================================
+   ArtLibrary - Light Theme
+   ===================================== */
+
+body[data-theme="light"] {
+    --bg: #f5f7fc;
+    --bg-soft: #edf1f8;
+    --surface: #ffffff;
+    --surface-2: #f0f3fa;
+    --border: rgba(20, 35, 58, 0.12);
+    --text: #17243a;
+    --muted: #63718a;
+
+    background: var(--bg);
+    color: var(--text);
+}
+
+/* Main page areas */
+body[data-theme="light"] main,
+body[data-theme="light"] section {
+    color: var(--text);
+}
+
+/* Header and navigation */
+body[data-theme="light"] header,
+body[data-theme="light"] .header,
+body[data-theme="light"] .site-header {
+    background: rgba(255, 255, 255, 0.96);
+    border-color: var(--border);
+}
+
+body[data-theme="light"] nav a,
+body[data-theme="light"] .logo,
+body[data-theme="light"] .nav-link {
+    color: var(--text);
+}
+
+/* Search */
+body[data-theme="light"] input,
+body[data-theme="light"] select,
+body[data-theme="light"] textarea,
+body[data-theme="light"] .search-box,
+body[data-theme="light"] .search-container {
+    background: #ffffff;
+    color: var(--text);
+    border-color: var(--border);
+}
+
+body[data-theme="light"] input::placeholder,
+body[data-theme="light"] textarea::placeholder {
+    color: #7b879b;
+}
+
+/* Cards and content panels */
+body[data-theme="light"] .art-card,
+body[data-theme="light"] .prompt-card,
+body[data-theme="light"] .category-card,
+body[data-theme="light"] .filter-panel,
+body[data-theme="light"] .search-panel {
+    background: var(--surface);
+    color: var(--text);
+    border-color: var(--border);
+}
+
+/* Text */
+body[data-theme="light"] h1,
+body[data-theme="light"] h2,
+body[data-theme="light"] h3,
+body[data-theme="light"] h4,
+body[data-theme="light"] p,
+body[data-theme="light"] label {
+    color: var(--text);
+}
+
+body[data-theme="light"] .muted,
+body[data-theme="light"] .subtitle,
+body[data-theme="light"] .description {
+    color: var(--muted);
+}
+
+/* Categories and filter buttons */
+body[data-theme="light"] .category-btn,
+body[data-theme="light"] .filter-button,
+body[data-theme="light"] .filter-btn {
+    background: var(--surface-2);
+    color: var(--text);
+    border-color: var(--border);
+}
+
+/* Footer */
+body[data-theme="light"] footer {
+    background: var(--bg-soft);
+    color: var(--text);
+    border-color: var(--border);
+}
+
+/* Mobile menu */
+body[data-theme="light"] .mobile-menu {
+    background: #ffffff;
+    color: var(--text);
+    border-color: var(--border);
+}
+
+/* Theme toggle */
+.theme-button {
+    cursor: pointer;
+}
+
+@media (max-width: 760px) {
+    .theme-button {
+        display: grid;
+        place-items: center;
+    }
+}
