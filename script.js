@@ -51,12 +51,18 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    /* SEARCH BUTTON */
+    /* ADVANCED FILTERS TOGGLE */
     const filterButton = document.querySelector(".filter-button");
 
     if (filterButton) {
+        filterButton.setAttribute("aria-label", "Toggle advanced filters");
+        filterButton.setAttribute("aria-expanded", "false");
         filterButton.addEventListener("click", () => {
-            alert("Advanced filters will be available soon.");
+            const panel = document.querySelector(".advanced-filter-panel");
+            if (!panel) return;
+            const isOpening = panel.hidden;
+            panel.hidden = !isOpening;
+            filterButton.setAttribute("aria-expanded", String(isOpening));
         });
     }
 
@@ -395,6 +401,69 @@ document.addEventListener("DOMContentLoaded", function () {
 
     let activeCategory = "all";
     let activeCard = null;
+    let activeModel = "all";
+
+    /* ADVANCED FILTER PANEL */
+    const searchBox = document.querySelector(".search-box");
+    let filterPanel = document.querySelector(".advanced-filter-panel");
+
+    if (searchBox && !filterPanel) {
+        filterPanel = document.createElement("div");
+        filterPanel.className = "advanced-filter-panel";
+        filterPanel.hidden = true;
+        filterPanel.innerHTML = `
+            <div class="advanced-filter-field">
+                <label for="artlibrary-filter-category">Category</label>
+                <select id="artlibrary-filter-category">
+                    <option value="all">All categories</option>
+                    ${Object.keys(categoryTerms).map(category =>
+                        `<option value="${category}">${category.replace(/&/g, "&amp;").replace(/\b\w/g, char => char.toUpperCase())}</option>`
+                    ).join("")}
+                </select>
+            </div>
+            <div class="advanced-filter-field">
+                <label for="artlibrary-filter-model">AI Model</label>
+                <select id="artlibrary-filter-model">
+                    <option value="all">All models</option>
+                    <option value="gemini">Gemini</option>
+                    <option value="chatgpt">ChatGPT</option>
+                </select>
+            </div>
+            <button type="button" class="advanced-filter-reset">Reset filters</button>
+        `;
+        searchBox.insertAdjacentElement("afterend", filterPanel);
+
+        const style = document.createElement("style");
+        style.textContent = `
+            .advanced-filter-panel {
+                display: flex; flex-wrap: wrap; align-items: end; gap: 12px;
+                margin-top: 12px; padding: 16px; border-radius: 14px;
+                border: 1px solid rgba(145,155,220,.22);
+                background: linear-gradient(145deg, rgba(24,31,58,.98), rgba(15,21,41,.99));
+                box-shadow: 0 12px 32px rgba(0,0,0,.16);
+            }
+            .advanced-filter-panel[hidden] { display: none !important; }
+            .advanced-filter-field { display: flex; flex: 1 1 180px; flex-direction: column; gap: 7px; }
+            .advanced-filter-field label { color: #cdd3f4; font-size: 12px; font-weight: 600; }
+            .advanced-filter-field select {
+                width: 100%; min-height: 42px; padding: 9px 12px; border-radius: 9px;
+                color: #edf0ff; background: #171f3d; border: 1px solid rgba(145,155,220,.28);
+                font: inherit;
+            }
+            .advanced-filter-reset {
+                min-height: 42px; padding: 9px 14px; border-radius: 9px; cursor: pointer;
+                color: #edf0ff; background: rgba(112,94,255,.16);
+                border: 1px solid rgba(145,125,255,.4); font: inherit;
+            }
+            .advanced-filter-reset:hover { background: rgba(112,94,255,.27); }
+            @media(max-width:560px) { .advanced-filter-panel { padding: 12px; gap: 10px; } }
+        `;
+        document.head.appendChild(style);
+    }
+
+    const filterCategorySelect = document.querySelector("#artlibrary-filter-category");
+    const filterModelSelect = document.querySelector("#artlibrary-filter-model");
+    const resetFiltersButton = document.querySelector(".advanced-filter-reset");
 
     const allButton = document.createElement("button");
     allButton.type = "button";
@@ -445,7 +514,9 @@ document.addEventListener("DOMContentLoaded", function () {
             const text = artworkText(card);
             const matchesSearch = words.every(word => text.includes(word));
             const matchesCurrentCategory = matchesCategory(card, activeCategory);
-            const visible = matchesSearch && matchesCurrentCategory;
+            const modelText = normalize(card.querySelector(".model")?.textContent);
+            const matchesModel = activeModel === "all" || modelText.includes(activeModel);
+            const visible = matchesSearch && matchesCurrentCategory && matchesModel;
 
             card.hidden = !visible;
             if (visible) visibleCount++;
@@ -501,16 +572,47 @@ document.addEventListener("DOMContentLoaded", function () {
     allButton.addEventListener("click", () => {
         activeCategory = "all";
         activeCard = null;
+        if (filterCategorySelect) filterCategorySelect.value = "all";
 
         if (searchInput) searchInput.value = "";
 
         renderResults(true);
     });
 
+    if (filterCategorySelect) {
+        filterCategorySelect.addEventListener("change", () => {
+            activeCategory = normalize(filterCategorySelect.value);
+            activeCard = categoryCards.find(card =>
+                normalize(card.querySelector("strong")?.textContent) === activeCategory
+            ) || null;
+            renderResults(true);
+        });
+    }
+
+    if (filterModelSelect) {
+        filterModelSelect.addEventListener("change", () => {
+            activeModel = normalize(filterModelSelect.value);
+            renderResults(true);
+        });
+    }
+
+    if (resetFiltersButton) {
+        resetFiltersButton.addEventListener("click", () => {
+            activeCategory = "all";
+            activeCard = null;
+            activeModel = "all";
+            if (searchInput) searchInput.value = "";
+            if (filterCategorySelect) filterCategorySelect.value = "all";
+            if (filterModelSelect) filterModelSelect.value = "all";
+            renderResults(true);
+        });
+    }
+
    if (searchInput) {
     searchInput.addEventListener("input", () => {
         activeCategory = "all";
         activeCard = null;
+        if (filterCategorySelect) filterCategorySelect.value = "all";
         renderResults(false);
     });
 }
