@@ -685,7 +685,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (!themeButton) return;
 
-    const logo = document.querySelector(".site-logo");
+    const logos = document.querySelectorAll(".site-logo");
 
     function applyTheme(theme) {
         if (theme === "light") {
@@ -695,9 +695,11 @@ document.addEventListener("DOMContentLoaded", function () {
             themeButton.setAttribute("aria-label", "Switch to dark theme");
             themeButton.setAttribute("title", "Switch to dark theme");
 
-            if (logo && logo.dataset.lightLogo) {
-                logo.src = logo.dataset.lightLogo;
-            }
+           logos.forEach(function (logo) {
+    if (logo.dataset.lightLogo) {
+        logo.src = logo.dataset.lightLogo;
+    }
+});
         } else {
             document.body.removeAttribute("data-theme");
 
@@ -705,9 +707,11 @@ document.addEventListener("DOMContentLoaded", function () {
             themeButton.setAttribute("aria-label", "Switch to light theme");
             themeButton.setAttribute("title", "Switch to light theme");
 
-            if (logo && logo.dataset.darkLogo) {
-                logo.src = logo.dataset.darkLogo;
-            }
+            logos.forEach(function (logo) {
+    if (logo.dataset.darkLogo) {
+        logo.src = logo.dataset.darkLogo;
+    }
+});
         }
     }
 
