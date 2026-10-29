@@ -677,6 +677,7 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 // ArtLibrary deployment refresh
 
+
 /* ArtLibrary — Light/Dark Theme Toggle */
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -684,35 +685,29 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (!themeButton) return;
 
-    
-function applyTheme(theme) {
     const logo = document.querySelector(".site-logo");
 
-    if (theme === "light") {
-        document.body.setAttribute("data-theme", "light");
-        themeButton.textContent = "☾";
-        themeButton.setAttribute("aria-label", "Switch to dark theme");
-        themeButton.setAttribute("title", "Switch to dark theme");
+    function applyTheme(theme) {
+        if (theme === "light") {
+            document.body.setAttribute("data-theme", "light");
 
-        if (logo) {
-            logo.src = logo.dataset.lightLogo;
-        }
-    } else {
-        document.body.removeAttribute("data-theme");
-        themeButton.textContent = "☼";
-        themeButton.setAttribute("aria-label", "Switch to light theme");
-        themeButton.setAttribute("title", "Switch to light theme");
+            themeButton.textContent = "☾";
+            themeButton.setAttribute("aria-label", "Switch to dark theme");
+            themeButton.setAttribute("title", "Switch to dark theme");
 
-        if (logo) {
-            logo.src = logo.dataset.darkLogo;
-        }
-    }
-}
-
+            if (logo && logo.dataset.lightLogo) {
+                logo.src = logo.dataset.lightLogo;
+            }
+        } else {
             document.body.removeAttribute("data-theme");
+
             themeButton.textContent = "☼";
             themeButton.setAttribute("aria-label", "Switch to light theme");
             themeButton.setAttribute("title", "Switch to light theme");
+
+            if (logo && logo.dataset.darkLogo) {
+                logo.src = logo.dataset.darkLogo;
+            }
         }
     }
 
