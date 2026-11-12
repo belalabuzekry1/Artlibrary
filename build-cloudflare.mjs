@@ -10,6 +10,7 @@ async function copy(src, dest) {
   if (text) {
     let body = await readFile(src, 'utf8');
     body = body.replaceAll('https://belalabuzekry1.github.io/Artlibrary', origin);
+    if (src === 'index.html' && !body.includes('rel="canonical"')) body = body.replace('</head>', '<link rel="canonical" href="' + origin + '/">\n</head>');
     await writeFile(dest, body);
   } else await copyFile(src, dest);
 }
@@ -22,4 +23,5 @@ for (const folder of ['art', 'images/web']) {
 }
 await writeFile(path.join(out, 'robots.txt'), `User-agent: *\nAllow: /\nSitemap: ${origin}/sitemap.xml\n`);
 await writeFile(path.join(out, '404.html'), '<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Page not found | ArtLibrary</title><body style="font:18px system-ui;max-width:40rem;margin:12vh auto;padding:24px"><h1>Page not found</h1><p>This page could not be found.</p><a href="/">Back to ArtLibrary</a></body></html>');
+await writeFile(path.join(out, '_redirects'), '/ /index.html 200\n/index.html / 301\n');
 console.log('Prepared public ArtLibrary files for ' + origin);
