@@ -2781,3 +2781,5 @@ body[data-theme="light"] .theme-button { color: #17243a; }
 body[data-theme="light"] .prompt-box .copy-prompt { color: #17243a; }
 body[data-theme="light"] .editor-field { color: #34425c; }
 body[data-theme="light"] .prompt-editor { border-top-color: rgba(20,35,58,.12); }
+body[data-theme="light"] .artwork-category { color: #4b32b8; background: rgba(109,75,255,.12); }
+body[data-theme="light"] .artwork-meta span:first-child { color: #4b32b8; }
