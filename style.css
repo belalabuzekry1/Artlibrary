@@ -2768,3 +2768,16 @@ body[data-theme="light"] .editor-status { color: #63718a; }
 body[data-theme="light"] .related-card { background: #fff; color: #17243a; border-color: rgba(20,35,58,.12); }
 body[data-theme="light"] .customize-link { color: #5b3fd6; }
 body[data-theme="light"] .model-pill.is-active { color: #17243a; }
+
+/* light theme: artwork page fixes */
+body[data-theme="light"] .prompt-box { background: #ffffff; border-color: rgba(20,35,58,.14); box-shadow: 0 10px 30px rgba(20,35,58,.08); }
+body[data-theme="light"] .prompt-header h2 { color: #17243a; }
+body[data-theme="light"] .artwork-prompt { color: #34425c; }
+body[data-theme="light"] .artwork-heading h1 { color: #17243a; }
+body[data-theme="light"] .artwork-tags span { background: #eef1f8; border-color: rgba(20,35,58,.12); color: #4a5876; }
+body[data-theme="light"] .artwork-back { color: #5b6a85; }
+body[data-theme="light"] .artwork-back:hover { color: #17243a; }
+body[data-theme="light"] .theme-button { color: #17243a; }
+body[data-theme="light"] .prompt-box .copy-prompt { color: #17243a; }
+body[data-theme="light"] .editor-field { color: #34425c; }
+body[data-theme="light"] .prompt-editor { border-top-color: rgba(20,35,58,.12); }
