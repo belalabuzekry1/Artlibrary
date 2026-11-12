@@ -1,6 +1,11 @@
 {
   "name": "artlibrary",
   "compatibility_date": "2026-11-12",
+  "workers_dev": true,
+  "routes": [
+    { "pattern": "artlibrary.ai", "custom_domain": true },
+    { "pattern": "www.artlibrary.ai", "custom_domain": true }
+  ],
   "assets": {
     "directory": "./dist",
     "html_handling": "none",
