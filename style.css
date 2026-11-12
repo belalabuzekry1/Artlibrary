@@ -2783,3 +2783,11 @@ body[data-theme="light"] .editor-field { color: #34425c; }
 body[data-theme="light"] .prompt-editor { border-top-color: rgba(20,35,58,.12); }
 body[data-theme="light"] .artwork-category { color: #4b32b8; background: rgba(109,75,255,.12); }
 body[data-theme="light"] .artwork-meta span:first-child { color: #4b32b8; }
+
+/* Info pages: About, How to use, Contact */
+.info-page{max-width:760px}
+.info-page h1{margin:16px 0 12px}
+.info-page h2{margin:28px 0 8px;font-size:1.2rem}
+.info-page p,.info-page li{line-height:1.7}
+.info-page ul{padding-left:1.2rem;margin:8px 0}
+.info-page a:not(.artwork-back){text-decoration:underline}
