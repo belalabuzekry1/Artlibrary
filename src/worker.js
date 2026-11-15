@@ -78,9 +78,17 @@ function cleanName(name) {
   return n;
 }
 
-function slugify(name) {
-  const s = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 30);
-  return s || "artist";
+const RESERVED_USERNAMES = new Set([
+  "www", "api", "admin", "about", "contact", "login", "register",
+  "account", "art", "how-to-use", "explore",
+]);
+
+function cleanUsername(username) {
+  if (typeof username !== "string") return null;
+  const value = username.trim().toLowerCase();
+  if (value.length < 3 || value.length > 24 || !/^[a-z0-9_-]+$/.test(value)) return null;
+  if (RESERVED_USERNAMES.has(value)) return null;
+  return value;
 }
 
 /* ---------------- passwords (PBKDF2 via WebCrypto) ---------------- */
@@ -214,11 +222,12 @@ async function register(request, env) {
 
   const body = await readJson(request);
   const name = body && cleanName(body.name);
+  const username = body && cleanUsername(body.username);
   const email = body && typeof body.email === "string" ? body.email.trim().toLowerCase() : null;
   const password = body && typeof body.password === "string" ? body.password : null;
 
-  if (!body || !name || !validEmail(email) || !password || password.length < 8 || password.length > 128) {
-    return json({ error: "Please check your details: name (2-60 chars), a valid email, and a password of at least 8 characters." }, 400);
+  if (!body || !name || !username || !validEmail(email) || !password || password.length < 8 || password.length > 128) {
+    return json({ error: "Please check your details: name (2-60 characters), username (3-24 letters, numbers, underscores, or hyphens; reserved names are not allowed), a valid email, and a password of at least 8 characters." }, 400);
   }
 
   const existing = await env.DB.prepare("SELECT id FROM users WHERE email = ?").bind(email).first();
@@ -226,18 +235,27 @@ async function register(request, env) {
     return json({ error: "An account with this email already exists. Try signing in instead." }, 409);
   }
 
-  // Unique handle for the future public portfolio URL.
-  let handle = slugify(name);
-  for (let i = 2; await env.DB.prepare("SELECT id FROM users WHERE handle = ?").bind(handle).first(); i++) {
-    handle = `${slugify(name)}-${i}`;
-    if (i > 50) handle = `artist-${crypto.randomUUID().slice(0, 8)}`;
+  // Handles are the future portfolio URLs. Compare case-insensitively; the
+  // database also has a unique index on lower(handle) to close race conditions.
+  const existingHandle = await env.DB.prepare("SELECT id FROM users WHERE lower(handle) = ?").bind(username).first();
+  if (existingHandle) {
+    return json({ error: "That username is already taken. Please choose another." }, 409);
   }
 
   const id = crypto.randomUUID();
   const passwordHash = await hashPassword(password);
-  await env.DB.prepare(
-    "INSERT INTO users (id, email, name, handle, password_hash, created_at) VALUES (?, ?, ?, ?, ?, ?)"
-  ).bind(id, email, name, handle, passwordHash, new Date().toISOString()).run();
+  try {
+    await env.DB.prepare(
+      "INSERT INTO users (id, email, name, handle, password_hash, created_at) VALUES (?, ?, ?, ?, ?, ?)"
+    ).bind(id, email, name, username, passwordHash, new Date().toISOString()).run();
+  } catch (err) {
+    // A concurrent sign-up may win after the check above. Keep the public
+    // response clear without exposing SQL errors.
+    const taken = await env.DB.prepare("SELECT id FROM users WHERE lower(handle) = ?").bind(username).first();
+    if (taken) return json({ error: "That username is already taken. Please choose another." }, 409);
+    throw err;
+  }
+  const handle = username;
 
   await recordFail(env, ipKey, MAX_REGISTERS_PER_HOUR, 60);
 
