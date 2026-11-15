@@ -508,6 +508,8 @@
         }).then(function (data) {
             if (!data || !data.user) return;
             link.href = base + "account.html";
+            link.classList.remove("auth-nav-link");
+            link.classList.add("account-nav-link");
             var first = (data.user.name || "").split(" ")[0];
             link.textContent = first || "Account";
         }).catch(function () { /* no backend: keep the plain link */ });
