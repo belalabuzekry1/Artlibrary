@@ -7,7 +7,7 @@
 
 const SESSION_COOKIE = "al_session";
 const SESSION_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days
-const PBKDF2_ITERATIONS = 150000;
+const PBKDF2_ITERATIONS = 100000; // Cloudflare Workers WebCrypto cap
 const MAX_LOGIN_FAILS = 5;
 const LOGIN_LOCK_MINUTES = 15;
 const MAX_REGISTERS_PER_HOUR = 8;
@@ -21,7 +21,7 @@ export default {
     try {
       return await handleApi(request, env, url);
     } catch (err) {
-      return json({ error: "Something went wrong. Please try again.", debug: String((err && err.message) || err) }, 500); // TEMP-DEBUG
+      return json({ error: "Something went wrong. Please try again." }, 500);
     }
   },
 };
@@ -96,15 +96,15 @@ function fromB64(b64) {
   return out;
 }
 
-async function hashPassword(password, saltB64) {
+async function hashPassword(password, saltB64, iterations = PBKDF2_ITERATIONS) {
   const salt = saltB64 ? fromB64(saltB64) : crypto.getRandomValues(new Uint8Array(16));
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
   const bits = await crypto.subtle.deriveBits(
-    { name: "PBKDF2", hash: "SHA-256", salt, iterations: PBKDF2_ITERATIONS },
+    { name: "PBKDF2", hash: "SHA-256", salt, iterations },
     key,
     256
   );
-  return `pbkdf2$${PBKDF2_ITERATIONS}$${toB64(salt)}$${toB64(bits)}`;
+  return `pbkdf2$${iterations}$${toB64(salt)}$${toB64(bits)}`;
 }
 
 function timingSafeEqualB64(a, b) {
@@ -117,7 +117,9 @@ function timingSafeEqualB64(a, b) {
 async function verifyPassword(password, stored) {
   const parts = (stored || "").split("$");
   if (parts.length !== 4 || parts[0] !== "pbkdf2") return false;
-  const computed = await hashPassword(password, parts[2]);
+  const iterations = parseInt(parts[1], 10);
+  if (!Number.isInteger(iterations) || iterations < 1 || iterations > 100000) return false;
+  const computed = await hashPassword(password, parts[2], iterations);
   return timingSafeEqualB64(computed.split("$")[3], parts[3]);
 }
 
