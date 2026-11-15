@@ -1,6 +1,7 @@
 {
   "name": "artlibrary",
   "compatibility_date": "2026-11-12",
+  "main": "src/worker.js",
   "workers_dev": true,
   "routes": [
     { "pattern": "artlibrary.ai", "custom_domain": true },
@@ -8,7 +9,15 @@
   ],
   "assets": {
     "directory": "./dist",
+    "binding": "ASSETS",
     "html_handling": "none",
     "not_found_handling": "404-page"
-  }
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "artlibrary",
+      "database_id": "c95ccc45-53cb-41fc-9365-8b46b76d2977"
+    }
+  ]
 }
