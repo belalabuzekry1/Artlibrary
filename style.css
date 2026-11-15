@@ -2791,3 +2791,88 @@ body[data-theme="light"] .artwork-meta span:first-child { color: #4b32b8; }
 .info-page p,.info-page li{line-height:1.7}
 .info-page ul{padding-left:1.2rem;margin:8px 0}
 .info-page a:not(.artwork-back){text-decoration:underline}
+
+/* =========================================================
+   AUTH PAGES (register / login / account)
+   ========================================================= */
+
+.auth-page { max-width: 520px; }
+
+.auth-form {
+    display: grid;
+    gap: 18px;
+    margin-top: 26px;
+}
+
+.auth-form label {
+    display: grid;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--muted);
+}
+
+.auth-form input {
+    width: 100%;
+    padding: 13px 16px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    outline: none;
+    transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.auth-form input:focus {
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgba(40, 120, 255, 0.18);
+}
+
+.auth-form .primary-button {
+    border: 0;
+    cursor: pointer;
+    margin-top: 4px;
+    width: 100%;
+    text-align: center;
+}
+
+.auth-form .primary-button:disabled { opacity: .6; cursor: default; transform: none; box-shadow: none; }
+
+.auth-error {
+    font-size: 14px;
+    line-height: 1.5;
+    color: #ff9d9d;
+    background: rgba(255, 90, 90, 0.08);
+    border: 1px solid rgba(255, 90, 90, 0.28);
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+}
+
+.auth-note { margin-top: 20px; font-size: 14px; color: var(--muted); }
+
+.auth-details {
+    display: grid;
+    gap: 12px;
+    margin: 22px 0 6px;
+    padding: 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+}
+
+.auth-details p {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    font-size: 14px;
+}
+
+.auth-details span { color: var(--muted); }
+.auth-details strong { font-weight: 600; }
+
+body[data-theme="light"] .auth-error {
+    color: #b3261e;
+    background: rgba(210, 40, 40, 0.07);
+    border-color: rgba(210, 40, 40, 0.3);
+}
