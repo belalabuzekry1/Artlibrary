@@ -60,7 +60,7 @@
         });
     }
 
-    wireForm("register-form", "register-error", "api/register", ["name", "email", "password"]);
+    wireForm("register-form", "register-error", "api/register", ["name", "username", "email", "password"]);
     wireForm("login-form", "login-error", "api/login", ["email", "password"]);
 
     /* ---------- account page ---------- */
