@@ -21,7 +21,7 @@ export default {
     try {
       return await handleApi(request, env, url);
     } catch (err) {
-      return json({ error: "Something went wrong. Please try again." }, 500);
+      return json({ error: "Something went wrong. Please try again.", debug: String((err && err.message) || err) }, 500); // TEMP-DEBUG
     }
   },
 };
