@@ -13,6 +13,9 @@
     "html_handling": "none",
     "not_found_handling": "404-page"
   },
+  "vars": {
+    "GOOGLE_CLIENT_ID": "292699826221-jje3cmb83aeo0e58nnvet9n4p4e6oupp.apps.googleusercontent.com"
+  },
   "d1_databases": [
     {
       "binding": "DB",

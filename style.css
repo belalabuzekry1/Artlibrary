@@ -2848,6 +2848,49 @@ body[data-theme="light"] .artwork-meta span:first-child { color: #4b32b8; }
     border-radius: var(--radius-sm);
 }
 
+.google-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: 13px 16px;
+    margin-top: 26px;
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 13px;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: border-color .15s ease, transform .2s ease, box-shadow .2s ease;
+}
+
+.google-button:hover {
+    border-color: var(--blue);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
+}
+
+.auth-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 20px 0 0;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+}
+
+.auth-divider + .auth-form { margin-top: 18px; }
+
 .auth-note { margin-top: 20px; font-size: 14px; color: var(--muted); }
 
 .auth-details {

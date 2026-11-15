@@ -60,6 +60,18 @@
         });
     }
 
+    /* A failed Google redirect lands back here with ?error=google. */
+    function showQueryError(errorId) {
+        var errorEl = document.getElementById(errorId);
+        if (!errorEl) return;
+        var params = new URLSearchParams(window.location.search);
+        if (params.get("error") === "google") {
+            showError(errorEl, "Google sign-in did not work this time. Please try again or use your email and password.");
+        }
+    }
+    showQueryError("register-error");
+    showQueryError("login-error");
+
     wireForm("register-form", "register-error", "api/register", ["name", "username", "email", "password"]);
     wireForm("login-form", "login-error", "api/login", ["email", "password"]);
 
