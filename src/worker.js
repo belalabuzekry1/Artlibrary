@@ -11,6 +11,9 @@ const PBKDF2_ITERATIONS = 100000; // Cloudflare Workers WebCrypto cap
 const MAX_LOGIN_FAILS = 5;
 const LOGIN_LOCK_MINUTES = 15;
 const MAX_REGISTERS_PER_HOUR = 8;
+const VERIFY_TTL_HOURS = 24;
+const VERIFY_COOLDOWN_SECONDS = 60;
+const VERIFY_MAX_PER_HOUR = 5;
 
 export default {
   async fetch(request, env) {
@@ -38,6 +41,8 @@ async function handleApi(request, env, url) {
 
   if (url.pathname === "/api/auth/google" && request.method === "GET") return googleStart(request, env);
   if (url.pathname === "/api/auth/google/callback" && request.method === "GET") return googleCallback(request, env);
+  if (url.pathname === "/api/verify-email" && request.method === "POST") return verifyEmail(request, env);
+  if (url.pathname === "/api/resend-verification" && request.method === "POST") return resendVerification(request, env);
   if (url.pathname === "/api/register" && request.method === "POST") return register(request, env);
   if (url.pathname === "/api/login" && request.method === "POST") return login(request, env);
   if (url.pathname === "/api/logout" && request.method === "POST") return logout(request, env);
@@ -174,7 +179,7 @@ async function getSessionUser(request, env) {
   const tokenHash = await sha256Hex(token);
   const now = new Date().toISOString();
   const row = await env.DB.prepare(
-    "SELECT u.id, u.name, u.email, u.handle, u.created_at FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.expires_at > ?"
+    "SELECT u.id, u.name, u.email, u.handle, u.created_at, u.email_verified_at FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.expires_at > ?"
   ).bind(tokenHash, now).first();
   return row || null;
 }
@@ -268,7 +273,13 @@ async function register(request, env) {
   await recordFail(env, ipKey, MAX_REGISTERS_PER_HOUR, 60);
 
   const token = await createSession(env, id);
-  return json({ ok: true, user: { name, email, handle } }, 201, { "Set-Cookie": sessionCookie(token) });
+  let emailSent = false;
+  try {
+    emailSent = await sendVerification(env, { id, email, name }, new URL(request.url).origin);
+  } catch (err) {
+    emailSent = false;
+  }
+  return json({ ok: true, emailSent, user: { name, email, handle, email_verified: false } }, 201, { "Set-Cookie": sessionCookie(token) });
 }
 
 async function login(request, env) {
@@ -284,7 +295,7 @@ async function login(request, env) {
     return json({ error: `Too many failed attempts. Please wait ${LOGIN_LOCK_MINUTES} minutes and try again.` }, 429);
   }
 
-  const user = await env.DB.prepare("SELECT id, name, email, handle, password_hash, google_sub FROM users WHERE email = ?").bind(email).first();
+  const user = await env.DB.prepare("SELECT id, name, email, handle, password_hash, google_sub, email_verified_at FROM users WHERE email = ?").bind(email).first();
   if (user && user.google_sub && (!user.password_hash || user.password_hash.startsWith("oauth$"))) {
     return json({ error: "This account was created with Google. Use Continue with Google to sign in." }, 400);
   }
@@ -296,7 +307,7 @@ async function login(request, env) {
 
   await clearFails(env, key);
   const token = await createSession(env, user.id);
-  return json({ ok: true, user: { name: user.name, email: user.email, handle: user.handle } }, 200, { "Set-Cookie": sessionCookie(token) });
+  return json({ ok: true, user: { name: user.name, email: user.email, handle: user.handle, email_verified: !!user.email_verified_at } }, 200, { "Set-Cookie": sessionCookie(token) });
 }
 
 /* ---------------- Google sign-in ---------------- */
@@ -470,7 +481,7 @@ async function googleCallback(request, env) {
     handle = user.handle;
     if (!user.google_sub) {
       // Google has verified ownership of this email, so linking is safe.
-      await env.DB.prepare("UPDATE users SET google_sub = ? WHERE id = ?").bind(payload.sub, userId).run();
+      await env.DB.prepare("UPDATE users SET google_sub = ?, email_verified_at = COALESCE(email_verified_at, ?) WHERE id = ?").bind(payload.sub, new Date().toISOString(), userId).run();
     }
   } else {
     userId = crypto.randomUUID();
@@ -478,8 +489,8 @@ async function googleCallback(request, env) {
     const name = cleanName(payload.name) || handle;
     try {
       await env.DB.prepare(
-        "INSERT INTO users (id, email, name, handle, password_hash, google_sub, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
-      ).bind(userId, email, name, handle, OAUTH_ONLY_PASSWORD, payload.sub, new Date().toISOString()).run();
+        "INSERT INTO users (id, email, name, handle, password_hash, google_sub, created_at, email_verified_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+      ).bind(userId, email, name, handle, OAUTH_ONLY_PASSWORD, payload.sub, new Date().toISOString(), new Date().toISOString()).run();
     } catch (err) {
       // A concurrent sign-up won the email or handle race; use that account.
       const existing = await env.DB.prepare("SELECT id, handle FROM users WHERE email = ?").bind(email).first();
@@ -495,6 +506,94 @@ async function googleCallback(request, env) {
     oauthCookie(GOOGLE_STATE_COOKIE, "", 0),
     oauthCookie(GOOGLE_NONCE_COOKIE, "", 0),
   ]);
+}
+
+/* ---------------- email verification ---------------- */
+
+function escapeHtml(text) {
+  return String(text).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+}
+
+// Sends through Resend's HTTP API. Needs the RESEND_API_KEY secret and a
+// sending domain verified with the provider. Returns false when not set up.
+async function sendEmail(env, to, subject, text, html) {
+  if (!env.RESEND_API_KEY) return false;
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: "Bearer " + env.RESEND_API_KEY, "Content-Type": "application/json" },
+    body: JSON.stringify({ from: env.MAIL_FROM || "ArtLibrary <noreply@artlibrary.ai>", to: [to], subject, text, html }),
+  });
+  return res.ok;
+}
+
+async function sendVerification(env, user, origin) {
+  const token = randomToken();
+  const tokenHash = await sha256Hex(token);
+  const now = new Date();
+  const expires = new Date(now.getTime() + VERIFY_TTL_HOURS * 3600 * 1000);
+  await env.DB.prepare("INSERT INTO email_tokens (token_hash, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)")
+    .bind(tokenHash, user.id, now.toISOString(), expires.toISOString()).run();
+  const link = `${origin}/verify-email.html?token=${token}`;
+  const first = escapeHtml((user.name || "").split(" ")[0] || "there");
+  const text = `Hi ${(user.name || "there").split(" ")[0]},\n\nConfirm your email to finish setting up your ArtLibrary account:\n${link}\n\nThis link works once and expires in ${VERIFY_TTL_HOURS} hours. If you did not create an account, you can ignore this email.\n\nArtLibrary`;
+  const html = `<div style="font-family:system-ui,Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#111">
+<h2 style="margin:0 0 16px">Confirm your email</h2>
+<p>Hi ${first},</p>
+<p>Confirm your email to finish setting up your ArtLibrary account.</p>
+<p style="margin:24px 0"><a href="${link}" style="background:#7c5cff;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:600">Confirm email</a></p>
+<p style="font-size:13px;color:#555">Or paste this link into your browser:<br>${link}</p>
+<p style="font-size:13px;color:#555">This link works once and expires in ${VERIFY_TTL_HOURS} hours. If you did not create an account, you can ignore this email.</p>
+</div>`;
+  return sendEmail(env, user.email, "Confirm your email for ArtLibrary", text, html);
+}
+
+async function verifyEmail(request, env) {
+  const body = await readJson(request);
+  const token = body && typeof body.token === "string" ? body.token : "";
+  if (!/^[A-Za-z0-9_-]{20,100}$/.test(token)) {
+    return json({ error: "This confirmation link is not valid." }, 400);
+  }
+  const tokenHash = await sha256Hex(token);
+  const now = new Date().toISOString();
+  const row = await env.DB.prepare("SELECT user_id FROM email_tokens WHERE token_hash = ? AND used_at IS NULL AND expires_at > ?")
+    .bind(tokenHash, now).first();
+  if (!row) {
+    return json({ error: "This confirmation link has expired or was already used. Sign in and request a new one." }, 400);
+  }
+  // Single use: only the request that flips used_at may proceed.
+  const claimed = await env.DB.prepare("UPDATE email_tokens SET used_at = ? WHERE token_hash = ? AND used_at IS NULL")
+    .bind(now, tokenHash).run();
+  if (!claimed.meta || claimed.meta.changes !== 1) {
+    return json({ error: "This confirmation link has expired or was already used. Sign in and request a new one." }, 400);
+  }
+  await env.DB.prepare("UPDATE users SET email_verified_at = COALESCE(email_verified_at, ?) WHERE id = ?").bind(now, row.user_id).run();
+  await env.DB.prepare("DELETE FROM email_tokens WHERE user_id = ? AND used_at IS NULL").bind(row.user_id).run();
+  return json({ ok: true });
+}
+
+async function resendVerification(request, env) {
+  const user = await getSessionUser(request, env);
+  if (!user) return json({ error: "Please sign in first." }, 401);
+  if (user.email_verified_at) return json({ ok: true, alreadyVerified: true });
+  const hourAgo = new Date(Date.now() - 3600 * 1000).toISOString();
+  const recent = await env.DB.prepare("SELECT created_at FROM email_tokens WHERE user_id = ? AND created_at > ? ORDER BY created_at DESC")
+    .bind(user.id, hourAgo).all();
+  const rows = (recent && recent.results) || [];
+  if (rows.length) {
+    const wait = VERIFY_COOLDOWN_SECONDS - Math.floor((Date.now() - Date.parse(rows[0].created_at)) / 1000);
+    if (wait > 0) return json({ error: `Please wait ${wait} seconds before requesting another email.`, retryAfter: wait }, 429);
+  }
+  if (rows.length >= VERIFY_MAX_PER_HOUR) {
+    return json({ error: "Too many confirmation emails requested. Please try again in an hour." }, 429);
+  }
+  let sent = false;
+  try {
+    sent = await sendVerification(env, user, new URL(request.url).origin);
+  } catch (err) {
+    sent = false;
+  }
+  if (!sent) return json({ error: "We could not send the email right now. Please try again in a few minutes." }, 503);
+  return json({ ok: true, retryAfter: VERIFY_COOLDOWN_SECONDS });
 }
 
 async function logout(request, env) {
@@ -515,6 +614,7 @@ async function me(request, env) {
       email: user.email,
       handle: user.handle,
       created_at: user.created_at,
+      email_verified: !!user.email_verified_at,
     },
   });
 }

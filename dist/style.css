@@ -2919,3 +2919,25 @@ body[data-theme="light"] .auth-error {
     background: rgba(210, 40, 40, 0.07);
     border-color: rgba(210, 40, 40, 0.3);
 }
+
+.auth-banner {
+    margin: 18px 0;
+    padding: 16px 18px;
+    border: 1px solid var(--blue);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+}
+.auth-banner p { margin: 8px 0 12px; font-size: 14px; line-height: 1.5; }
+.auth-banner .auth-note { margin: 10px 0 0; }
+.secondary-button {
+    padding: 10px 16px;
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.secondary-button:hover { border-color: var(--blue); }
+.secondary-button:disabled { opacity: .6; cursor: default; }

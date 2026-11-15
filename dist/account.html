@@ -31,9 +31,16 @@
 <div id="account-loading">Loading your account...</div>
 <div id="account-card" hidden>
 <h1 id="account-name">Your account</h1>
+<div id="verify-banner" class="auth-banner" hidden>
+<strong>Check your inbox</strong>
+<p>We sent a confirmation link to <span id="verify-email-addr"></span>. Confirm your email to finish setting up your account. The link expires in 24 hours.</p>
+<button class="secondary-button" id="resend-button" type="button">Resend email</button>
+<p class="auth-note" id="resend-status" hidden></p>
+</div>
 <div class="auth-details">
 <p><span>Email</span><strong id="account-email"></strong></p>
 <p><span>Portfolio link</span><strong id="account-handle"></strong></p>
+<p><span>Email status</span><strong id="account-verified"></strong></p>
 <p><span>Member since</span><strong id="account-since"></strong></p>
 </div>
 <p class="auth-note">Uploads and your public portfolio page are coming soon - this is where your AI art and prompts will live.</p>

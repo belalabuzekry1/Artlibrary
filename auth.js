@@ -75,6 +75,68 @@
     wireForm("register-form", "register-error", "api/register", ["name", "username", "email", "password"]);
     wireForm("login-form", "login-error", "api/login", ["email", "password"]);
 
+    function wireResend() {
+        var btn = document.getElementById("resend-button");
+        var status = document.getElementById("resend-status");
+        var timer = null;
+        function cooldown(seconds) {
+            btn.disabled = true;
+            var left = seconds;
+            btn.textContent = "Resend email (" + left + "s)";
+            clearInterval(timer);
+            timer = setInterval(function () {
+                left -= 1;
+                if (left <= 0) {
+                    clearInterval(timer);
+                    btn.disabled = false;
+                    btn.textContent = "Resend email";
+                } else {
+                    btn.textContent = "Resend email (" + left + "s)";
+                }
+            }, 1000);
+        }
+        btn.addEventListener("click", function () {
+            btn.disabled = true;
+            status.hidden = true;
+            postJson("api/resend-verification", {}).then(function (res) {
+                status.hidden = false;
+                if (res.status >= 200 && res.status < 300) {
+                    if (res.data.alreadyVerified) { window.location.reload(); return; }
+                    status.textContent = "Sent. Check your inbox (and spam folder).";
+                    cooldown(res.data.retryAfter || 60);
+                } else {
+                    status.textContent = res.data.error || "Could not send the email. Please try again.";
+                    if (res.data.retryAfter) cooldown(res.data.retryAfter); else btn.disabled = false;
+                }
+            }).catch(function () {
+                status.hidden = false;
+                status.textContent = "Could not reach the server. Check your connection and try again.";
+                btn.disabled = false;
+            });
+        });
+    }
+
+    /* ---------- confirm email page ---------- */
+    var verifyTitle = document.getElementById("verify-title");
+    if (verifyTitle) {
+        var msg = document.getElementById("verify-message");
+        var cont = document.getElementById("verify-continue");
+        var token = new URLSearchParams(window.location.search).get("token") || "";
+        postJson("api/verify-email", { token: token }).then(function (res) {
+            if (res.status === 200) {
+                verifyTitle.textContent = "Email confirmed";
+                msg.textContent = "Thanks. Your account is ready.";
+            } else {
+                verifyTitle.textContent = "Link not valid";
+                msg.textContent = res.data.error || "This confirmation link is not valid.";
+            }
+            cont.hidden = false;
+        }).catch(function () {
+            verifyTitle.textContent = "Something went wrong";
+            msg.textContent = "Could not reach the server. Please reload this page.";
+        });
+    }
+
     /* ---------- account page ---------- */
     var card = document.getElementById("account-card");
     if (card) {
@@ -93,6 +155,12 @@
             document.getElementById("account-handle").textContent = "artlibrary.ai/" + u.handle + " (coming soon)";
             var since = (u.created_at || "").slice(0, 10);
             document.getElementById("account-since").textContent = since || "-";
+            document.getElementById("account-verified").textContent = u.email_verified ? "Confirmed" : "Not confirmed yet";
+            if (!u.email_verified) {
+                document.getElementById("verify-email-addr").textContent = u.email;
+                document.getElementById("verify-banner").hidden = false;
+                wireResend();
+            }
             loading.hidden = true;
             card.hidden = false;
         }).catch(function () {
