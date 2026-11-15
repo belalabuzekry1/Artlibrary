@@ -34,6 +34,10 @@
 <label>Your name
 <input name="name" type="text" autocomplete="name" minlength="2" maxlength="60" required placeholder="e.g. Belal Abuzekry">
 </label>
+<label>Username
+<input name="username" type="text" autocomplete="username" minlength="3" maxlength="24" pattern="[A-Za-z0-9_-]{3,24}" required placeholder="e.g. belal_design">
+</label>
+<p class="auth-note">3-24 characters: letters, numbers, underscores, or hyphens. Your username will be your portfolio link.</p>
 <label>Email
 <input name="email" type="email" autocomplete="email" required placeholder="you@example.com">
 </label>
