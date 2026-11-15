@@ -486,3 +486,30 @@
 
     if (IS_ART_PAGE) initArtworkPage(); else initGallery();
 })();
+
+/* =========================================================
+   AUTH ENTRY IN NAV
+   Adds "Sign in" to the shared nav and swaps it to the
+   member's account link when a session exists.
+   ========================================================= */
+(function () {
+    "use strict";
+    try {
+        var nav = document.querySelector(".desktop-nav");
+        if (!nav || !window.fetch) return;
+        var base = document.body.getAttribute("data-art") ? "../" : "";
+        var link = document.createElement("a");
+        link.href = base + "login.html";
+        link.textContent = "Sign in";
+        link.className = "auth-nav-link";
+        nav.appendChild(link);
+        fetch(base + "api/me", { credentials: "same-origin" }).then(function (r) {
+            return r.ok ? r.json() : null;
+        }).then(function (data) {
+            if (!data || !data.user) return;
+            link.href = base + "account.html";
+            var first = (data.user.name || "").split(" ")[0];
+            link.textContent = first || "Account";
+        }).catch(function () { /* no backend: keep the plain link */ });
+    } catch (e) { /* nav auth entry is optional */ }
+})();
