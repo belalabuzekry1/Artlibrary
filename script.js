@@ -31,18 +31,41 @@
     var menuButton = document.querySelector(".menu-button");
     var nav = document.querySelector(".desktop-nav");
     if (menuButton && nav) {
-        menuButton.addEventListener("click", function () {
-            nav.classList.toggle("mobile-open");
-            var open = nav.classList.contains("mobile-open");
+        // Keep the four main destinations within reach on every mobile page.
+        var primaryNav = el("nav", "mobile-primary-nav");
+        primaryNav.setAttribute("aria-label", "Main destinations");
+        ["Explore", "Categories", "Models", "Community"].forEach(function (label) {
+            var hash = "#" + label.toLowerCase();
+            var link = el("a", "", label);
+            var homePage = !IS_ART_PAGE && /(?:\/|\/index\.html)$/.test(window.location.pathname);
+            link.href = homePage ? hash : BASE + "index.html" + hash;
+            primaryNav.appendChild(link);
+            nav.querySelectorAll("a").forEach(function (existing) {
+                if (existing.getAttribute("href").split("#")[1] === hash.slice(1)) {
+                    existing.classList.add("primary-menu-link");
+                }
+            });
+        });
+        nav.parentNode.appendChild(primaryNav);
+        nav.setAttribute("aria-label", "More destinations");
+        if (!nav.id) nav.id = "site-menu";
+        menuButton.setAttribute("aria-controls", nav.id);
+        function setMenuOpen(open) {
+            nav.classList.toggle("mobile-open", open);
             menuButton.setAttribute("aria-expanded", String(open));
             menuButton.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+        }
+        setMenuOpen(false);
+        menuButton.addEventListener("click", function () {
+            setMenuOpen(!nav.classList.contains("mobile-open"));
         });
         document.addEventListener("keydown", function (e) {
-            if (e.key === "Escape") nav.classList.remove("mobile-open");
+            if (e.key === "Escape") setMenuOpen(false);
         });
-        nav.querySelectorAll("a").forEach(function (a) {
-            a.addEventListener("click", function () { nav.classList.remove("mobile-open"); });
+        nav.addEventListener("click", function (e) {
+            if (e.target.closest("a")) setMenuOpen(false);
         });
+        primaryNav.addEventListener("click", function () { setMenuOpen(false); });
     }
 
     var themeButton = document.querySelector(".theme-button");
