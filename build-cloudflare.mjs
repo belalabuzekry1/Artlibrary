@@ -15,7 +15,7 @@ async function copy(src, dest) {
   } else await copyFile(src, dest);
 }
 for (const item of await readdir('.')) {
-  if (/^(index\.html|about\.html|how-to-use\.html|contact\.html|artwork\.html|register\.html|login\.html|account\.html|verify-email\.html|privacy\.html|data\.js|script\.js|auth\.js|style\.css|sitemap\.xml|favicon.*\.(png|ico)|icon\.(png|svg)|logo.*\.(png|svg)|ArtLibrary Gradient Spark Logo\.png)$/.test(item)) await copy(item, path.join(out, item));
+  if (/^(index\.html|about\.html|how-to-use\.html|contact\.html|artwork\.html|register\.html|login\.html|account\.html|admin\.html|verify-email\.html|privacy\.html|data\.js|script\.js|auth\.js|style\.css|sitemap\.xml|favicon.*\.(png|ico)|icon\.(png|svg)|logo.*\.(png|svg)|ArtLibrary Gradient Spark Logo\.png)$/.test(item)) await copy(item, path.join(out, item));
 }
 for (const folder of ['art', 'images/web']) {
   await mkdir(path.join(out, folder), { recursive: true });
