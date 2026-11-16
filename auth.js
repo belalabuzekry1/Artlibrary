@@ -46,7 +46,7 @@
             button.textContent = "Please wait...";
             postJson(path, payload).then(function (res) {
                 if (res.status >= 200 && res.status < 300) {
-                    window.location.href = "account.html";
+                    window.location.href = formId === "login-form" ? "index.html#explore" : "account.html";
                     return;
                 }
                 showError(errorEl, res.data.error || "Something went wrong. Please try again.");
