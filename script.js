@@ -519,6 +519,13 @@
         link.textContent = "Sign in";
         link.className = "auth-nav-link";
         nav.appendChild(link);
+        var adminLink = document.createElement("a");
+        adminLink.href = base + "admin.html";
+        adminLink.textContent = "Admin";
+        adminLink.className = "admin-nav-link";
+        adminLink.hidden = true;
+        nav.appendChild(adminLink);
+        adminLink.addEventListener("click", function () { nav.classList.remove("mobile-open"); });
         fetch(base + "api/me", { credentials: "same-origin" }).then(function (r) {
             return r.ok ? r.json() : null;
         }).then(function (data) {
@@ -528,6 +535,7 @@
             link.classList.add("account-nav-link");
             var first = (data.user.name || "").split(" ")[0];
             link.textContent = first || "Account";
+            if (data.user.is_admin === true) adminLink.hidden = false;
         }).catch(function () { /* no backend: keep the plain link */ });
     } catch (e) { /* nav auth entry is optional */ }
 })();
