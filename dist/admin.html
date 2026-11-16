@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin - users | ArtLibrary</title>
+<meta name="description" content="Private ArtLibrary account administration.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="favicon-32.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="site-header">
+<div class="container header-inner">
+<a href="index.html" class="brand"><img src="logo.png" data-dark-logo="logo.png" data-light-logo="logo-light-bg.png" alt="ArtLibrary" class="site-logo"></a>
+<nav class="desktop-nav">
+<a href="index.html#explore">Explore</a>
+<a href="how-to-use.html">How to use</a>
+<a href="about.html">About</a>
+<a href="contact.html">Contact</a>
+</nav>
+<div class="header-actions">
+<button class="theme-button" aria-label="Toggle theme">&#9788;</button>
+<a href="account.html" class="back-home">Account</a>
+<button class="menu-button" aria-label="Open menu">&#9776;</button>
+</div>
+</div>
+</header>
+<main class="admin-page">
+<div class="container">
+<div class="admin-heading">
+<div>
+<p class="admin-eyebrow">Private dashboard</p>
+<h1>Registered users</h1>
+<p class="admin-intro">View the accounts created on ArtLibrary.</p>
+</div>
+<div class="admin-total" aria-live="polite"><strong id="user-total">-</strong><span>registered</span></div>
+</div>
+<p id="admin-status" class="admin-status" role="status">Loading users...</p>
+<div id="admin-table-wrap" class="admin-table-wrap" hidden>
+<table class="admin-table">
+<thead><tr><th>Username</th><th>Email</th><th>Signed up</th><th>Method</th><th>Email verified</th></tr></thead>
+<tbody id="admin-users"></tbody>
+</table>
+</div>
+</div>
+</main>
+<footer class="site-footer">
+<div class="container footer-bottom">
+<span>&copy; 2026 ArtLibrary.ai</span>
+<span><a href="about.html">About</a> &middot; <a href="how-to-use.html">How to use</a> &middot; <a href="contact.html">Contact</a></span>
+</div>
+</footer>
+<script src="script.js"></script>
+<script>
+(function () {
+  "use strict";
+  var status = document.getElementById("admin-status");
+  var total = document.getElementById("user-total");
+  var wrap = document.getElementById("admin-table-wrap");
+  var tbody = document.getElementById("admin-users");
+  function cell(value) {
+    var td = document.createElement("td");
+    td.textContent = value == null || value === "" ? "-" : String(value);
+    return td;
+  }
+  fetch("/api/admin/users", { credentials: "same-origin", cache: "no-store" }).then(function (response) {
+    if (!response.ok) throw new Error("Could not load users.");
+    return response.json();
+  }).then(function (data) {
+    total.textContent = String(data.total);
+    status.hidden = true;
+    (data.users || []).forEach(function (user) {
+      var row = document.createElement("tr");
+      row.appendChild(cell(user.handle));
+      row.appendChild(cell(user.email));
+      var date = user.created_at ? new Date(user.created_at) : null;
+      row.appendChild(cell(date && !Number.isNaN(date.getTime()) ? date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "-"));
+      row.appendChild(cell(user.signup_method));
+      row.appendChild(cell(user.email_verified ? "Verified" : "Not verified"));
+      tbody.appendChild(row);
+    });
+    if (!data.users || !data.users.length) status.textContent = "No registered users yet.";
+    wrap.hidden = !data.users || !data.users.length;
+  }).catch(function () {
+    status.textContent = "Could not load the user list. Refresh the page and try again.";
+    total.textContent = "-";
+  });
+})();
+</script>
+</body>
+</html>
