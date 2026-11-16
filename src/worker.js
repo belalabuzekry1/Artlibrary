@@ -563,7 +563,7 @@ async function googleCallback(request, env) {
 
   if (!createdViaGoogle) await recordLoginMetadata(env, userId, request);
   const token = await createSession(env, userId);
-  return redirectWithCookies("/account.html", [
+  return redirectWithCookies("/#explore", [
     sessionCookie(token),
     oauthCookie(GOOGLE_STATE_COOKIE, "", 0),
     oauthCookie(GOOGLE_NONCE_COOKIE, "", 0),
