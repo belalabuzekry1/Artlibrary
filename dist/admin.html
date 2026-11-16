@@ -32,14 +32,38 @@
 <div>
 <p class="admin-eyebrow">Private dashboard</p>
 <h1>Registered users</h1>
-<p class="admin-intro">View the accounts created on ArtLibrary.</p>
+<p class="admin-intro">Account totals, signup patterns, verification status, and recent sign-in details.</p>
 </div>
 <div class="admin-total" aria-live="polite"><strong id="user-total">-</strong><span>registered</span></div>
 </div>
 <p id="admin-status" class="admin-status" role="status">Loading users...</p>
+<section id="admin-insights" class="admin-insights" aria-label="Account insights" hidden>
+  <article class="admin-insight-card admin-trend-card">
+    <div class="admin-insight-heading"><div><h2>Signups over time</h2><p>Daily signups in the last 30 days</p></div></div>
+    <svg id="signup-trend" class="admin-trend-chart" viewBox="0 0 600 230" role="img" aria-label="Daily signups over the last 30 days"></svg>
+  </article>
+  <article class="admin-insight-card">
+    <h2>Signup method</h2>
+    <p class="admin-insight-note">Google versus email accounts</p>
+    <div id="signup-methods" class="admin-bars"></div>
+  </article>
+  <article class="admin-insight-card admin-unverified-card">
+    <h2>Unverified accounts</h2>
+    <p class="admin-insight-note">Accounts that have not verified their email</p>
+    <strong id="unverified-count" class="admin-insight-number">-</strong>
+  </article>
+  <article class="admin-insight-card admin-distribution-card">
+    <h2>Signup country and device</h2>
+    <p class="admin-insight-note">Approximate location and broad device category</p>
+    <div class="admin-distributions">
+      <div><h3>Country</h3><div id="signup-countries" class="admin-bars"></div></div>
+      <div><h3>Device</h3><div id="signup-devices" class="admin-bars"></div></div>
+    </div>
+  </article>
+</section>
 <div id="admin-table-wrap" class="admin-table-wrap" hidden>
 <table class="admin-table">
-<thead><tr><th>Username</th><th>Email</th><th>Signed up</th><th>Method</th><th>Email verified</th></tr></thead>
+<thead><tr><th>Username</th><th>Email</th><th>Signed up</th><th>At signup</th><th>Method</th><th>Email verified</th><th>Latest sign-in</th></tr></thead>
 <tbody id="admin-users"></tbody>
 </table>
 </div>
@@ -58,11 +82,100 @@
   var status = document.getElementById("admin-status");
   var total = document.getElementById("user-total");
   var wrap = document.getElementById("admin-table-wrap");
+  var insights = document.getElementById("admin-insights");
   var tbody = document.getElementById("admin-users");
   function cell(value) {
     var td = document.createElement("td");
     td.textContent = value == null || value === "" ? "-" : String(value);
     return td;
+  }
+  function place(city, country) {
+    return [city, country].filter(Boolean).join(", ") || "Unavailable";
+  }
+  function dateTime(value) {
+    var date = value ? new Date(value) : null;
+    return date && !Number.isNaN(date.getTime())
+      ? date.toLocaleString(undefined, { year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
+      : "";
+  }
+  function svgNode(tag, attributes, text) {
+    var node = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    Object.keys(attributes || {}).forEach(function (key) { node.setAttribute(key, attributes[key]); });
+    if (text != null) node.textContent = text;
+    return node;
+  }
+  function renderTrend(points) {
+    var svg = document.getElementById("signup-trend");
+    svg.replaceChildren();
+    var baseline = 178, top = 25, left = 36, plotWidth = 540, plotHeight = 140;
+    var max = Math.max(1, ...points.map(function (point) { return Number(point.count) || 0; }));
+    var step = points.length ? plotWidth / points.length : plotWidth;
+    svg.appendChild(svgNode("line", { x1: left, x2: left + plotWidth, y1: baseline, y2: baseline, class: "admin-chart-axis" }));
+    svg.appendChild(svgNode("line", { x1: left, x2: left + plotWidth, y1: top, y2: top, class: "admin-chart-grid" }));
+    svg.appendChild(svgNode("text", { x: 3, y: top + 4, class: "admin-chart-label" }, String(max)));
+    svg.appendChild(svgNode("text", { x: 20, y: baseline + 4, class: "admin-chart-label" }, "0"));
+    points.forEach(function (point, index) {
+      var count = Number(point.count) || 0;
+      var barHeight = count ? Math.max(3, (count / max) * plotHeight) : 2;
+      var x = left + index * step + step * 0.18;
+      var rect = svgNode("rect", {
+        x: x, y: baseline - barHeight, width: Math.max(2, step * 0.64), height: barHeight,
+        rx: 3, class: count ? "admin-chart-bar" : "admin-chart-empty"
+      });
+      rect.appendChild(svgNode("title", {}, point.date + ": " + count + (count === 1 ? " signup" : " signups")));
+      svg.appendChild(rect);
+      if (index % 6 === 0 || index === points.length - 1) {
+        var date = new Date(point.date + "T00:00:00Z");
+        svg.appendChild(svgNode("text", { x: x, y: 205, class: "admin-chart-label" }, date.toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" })));
+      }
+    });
+    svg.setAttribute("aria-label", "Daily signups over the last 30 days; highest daily count " + max);
+  }
+  function renderBars(containerId, entries) {
+    var container = document.getElementById(containerId);
+    container.replaceChildren();
+    entries = entries || [];
+    var max = Math.max(1, ...entries.map(function (entry) { return Number(entry.count) || 0; }));
+    if (!entries.length) {
+      var empty = document.createElement("p");
+      empty.className = "admin-empty-note";
+      empty.textContent = "No signup data yet.";
+      container.appendChild(empty);
+      return;
+    }
+    entries.slice(0, 6).forEach(function (entry) {
+      var row = document.createElement("div");
+      row.className = "admin-bar-row";
+      var label = document.createElement("span");
+      label.className = "admin-bar-label";
+      label.textContent = entry.label;
+      var value = document.createElement("span");
+      value.className = "admin-bar-value";
+      value.textContent = String(entry.count);
+      var track = document.createElement("span");
+      track.className = "admin-bar-track";
+      track.setAttribute("aria-hidden", "true");
+      var bar = document.createElement("span");
+      bar.className = "admin-bar-fill";
+      bar.style.width = Math.max(3, ((Number(entry.count) || 0) / max) * 100) + "%";
+      track.appendChild(bar);
+      row.appendChild(label);
+      row.appendChild(value);
+      row.appendChild(track);
+      container.appendChild(row);
+    });
+  }
+  function renderInsights(data) {
+    var summary = data.insights || {};
+    renderTrend(summary.signup_trend || []);
+    renderBars("signup-methods", [
+      { label: "Google", count: summary.signup_methods && summary.signup_methods.Google || 0 },
+      { label: "Email", count: summary.signup_methods && summary.signup_methods.Email || 0 }
+    ]);
+    document.getElementById("unverified-count").textContent = String(summary.unverified_count || 0);
+    renderBars("signup-countries", summary.signup_countries || []);
+    renderBars("signup-devices", summary.signup_devices || []);
+    insights.hidden = false;
   }
   fetch("/api/admin/users", { credentials: "same-origin", cache: "no-store" }).then(function (response) {
     if (!response.ok) throw new Error("Could not load users.");
@@ -70,14 +183,19 @@
   }).then(function (data) {
     total.textContent = String(data.total);
     status.hidden = true;
+    renderInsights(data);
     (data.users || []).forEach(function (user) {
       var row = document.createElement("tr");
       row.appendChild(cell(user.handle));
       row.appendChild(cell(user.email));
       var date = user.created_at ? new Date(user.created_at) : null;
       row.appendChild(cell(date && !Number.isNaN(date.getTime()) ? date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "-"));
+      row.appendChild(cell(place(user.signup_city, user.signup_country) + " · " + (user.signup_device_type || "Unavailable")));
       row.appendChild(cell(user.signup_method));
       row.appendChild(cell(user.email_verified ? "Verified" : "Not verified"));
+      row.appendChild(cell(user.last_login_at
+        ? dateTime(user.last_login_at) + " · " + place(user.last_login_city, user.last_login_country) + " · " + (user.last_login_device_type || "Unavailable")
+        : "No sign-in recorded yet"));
       tbody.appendChild(row);
     });
     if (!data.users || !data.users.length) status.textContent = "No registered users yet.";

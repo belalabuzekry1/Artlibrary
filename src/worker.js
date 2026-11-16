@@ -210,6 +210,34 @@ async function getSessionUser(request, env) {
   return row || null;
 }
 
+function deviceTypeFromUserAgent(request) {
+  const ua = (request.headers.get("User-Agent") || "").slice(0, 512).toLowerCase();
+  if (!ua) return "Unknown";
+  if (/ipad|tablet|kindle|silk|playbook/.test(ua)) return "Tablet";
+  if (/android/.test(ua)) return /mobile/.test(ua) ? "Mobile" : "Tablet";
+  if (/iphone|ipod|mobile|windows phone|iemobile|blackberry/.test(ua)) return "Mobile";
+  return "Desktop";
+}
+
+function requestVisitMetadata(request) {
+  const cf = request.cf || {};
+  const city = typeof cf.city === "string" ? cf.city.trim().slice(0, 100) : "";
+  const country = typeof cf.country === "string" ? cf.country.trim().toUpperCase() : "";
+  return {
+    city: city || null,
+    country: /^[A-Z]{2}$/.test(country) ? country : null,
+    deviceType: deviceTypeFromUserAgent(request),
+  };
+}
+
+async function recordLoginMetadata(env, userId, request) {
+  const metadata = requestVisitMetadata(request);
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    "UPDATE users SET last_login_at = ?, last_login_city = ?, last_login_country = ?, last_login_device_type = ? WHERE id = ?"
+  ).bind(now, metadata.city, metadata.country, metadata.deviceType, userId).run();
+}
+
 async function createSession(env, userId) {
   const token = randomToken();
   const tokenHash = await sha256Hex(token);
@@ -283,10 +311,12 @@ async function register(request, env) {
 
   const id = crypto.randomUUID();
   const passwordHash = await hashPassword(password);
+  const createdAt = new Date().toISOString();
+  const visit = requestVisitMetadata(request);
   try {
     await env.DB.prepare(
-      "INSERT INTO users (id, email, name, handle, password_hash, created_at) VALUES (?, ?, ?, ?, ?, ?)"
-    ).bind(id, email, name, username, passwordHash, new Date().toISOString()).run();
+      "INSERT INTO users (id, email, name, handle, password_hash, created_at, signup_city, signup_country, signup_device_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    ).bind(id, email, name, username, passwordHash, createdAt, visit.city, visit.country, visit.deviceType).run();
   } catch (err) {
     // A concurrent sign-up may win after the check above. Keep the public
     // response clear without exposing SQL errors.
@@ -332,6 +362,7 @@ async function login(request, env) {
   }
 
   await clearFails(env, key);
+  await recordLoginMetadata(env, user.id, request);
   const token = await createSession(env, user.id);
   return json({ ok: true, user: { name: user.name, email: user.email, handle: user.handle, email_verified: !!user.email_verified_at } }, 200, { "Set-Cookie": sessionCookie(token) });
 }
@@ -502,6 +533,7 @@ async function googleCallback(request, env) {
   }
 
   let userId, handle;
+  let createdViaGoogle = false;
   if (user) {
     userId = user.id;
     handle = user.handle;
@@ -513,10 +545,13 @@ async function googleCallback(request, env) {
     userId = crypto.randomUUID();
     handle = await uniqueHandle(env, email);
     const name = cleanName(payload.name) || handle;
+    const createdAt = new Date().toISOString();
+    const visit = requestVisitMetadata(request);
     try {
       await env.DB.prepare(
-        "INSERT INTO users (id, email, name, handle, password_hash, google_sub, created_at, email_verified_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-      ).bind(userId, email, name, handle, OAUTH_ONLY_PASSWORD, payload.sub, new Date().toISOString(), new Date().toISOString()).run();
+        "INSERT INTO users (id, email, name, handle, password_hash, google_sub, created_at, email_verified_at, signup_city, signup_country, signup_device_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+      ).bind(userId, email, name, handle, OAUTH_ONLY_PASSWORD, payload.sub, createdAt, createdAt, visit.city, visit.country, visit.deviceType).run();
+      createdViaGoogle = true;
     } catch (err) {
       // A concurrent sign-up won the email or handle race; use that account.
       const existing = await env.DB.prepare("SELECT id, handle FROM users WHERE email = ?").bind(email).first();
@@ -526,6 +561,7 @@ async function googleCallback(request, env) {
     }
   }
 
+  if (!createdViaGoogle) await recordLoginMetadata(env, userId, request);
   const token = await createSession(env, userId);
   return redirectWithCookies("/account.html", [
     sessionCookie(token),
@@ -634,7 +670,7 @@ async function logout(request, env) {
 async function adminUsers(request, env) {
   if (!(await getAdminUser(request, env))) return notFound();
   const result = await env.DB.prepare(
-    "SELECT handle, email, created_at, password_hash, email_verified_at FROM users ORDER BY created_at DESC"
+    "SELECT handle, email, created_at, password_hash, email_verified_at, signup_city, signup_country, signup_device_type, last_login_at, last_login_city, last_login_country, last_login_device_type FROM users ORDER BY created_at DESC"
   ).all();
   const users = (result.results || []).map((row) => ({
     handle: row.handle,
@@ -642,8 +678,49 @@ async function adminUsers(request, env) {
     created_at: row.created_at,
     signup_method: row.password_hash === OAUTH_ONLY_PASSWORD ? "Google" : "Email",
     email_verified: !!row.email_verified_at,
+    signup_city: row.signup_city,
+    signup_country: row.signup_country,
+    signup_device_type: row.signup_device_type,
+    last_login_at: row.last_login_at,
+    last_login_city: row.last_login_city,
+    last_login_country: row.last_login_country,
+    last_login_device_type: row.last_login_device_type,
   }));
-  return json({ total: users.length, users }, 200, { "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex, nofollow" });
+  const now = new Date();
+  const signupCounts = new Map();
+  const signupMethods = { Google: 0, Email: 0 };
+  const countries = new Map();
+  const devices = new Map();
+  let unverified = 0;
+  for (const user of users) {
+    const day = typeof user.created_at === "string" ? user.created_at.slice(0, 10) : "";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(day)) signupCounts.set(day, (signupCounts.get(day) || 0) + 1);
+    signupMethods[user.signup_method] = (signupMethods[user.signup_method] || 0) + 1;
+    if (!user.email_verified) unverified += 1;
+    const country = user.signup_country || "Unknown";
+    const device = user.signup_device_type || "Unknown";
+    countries.set(country, (countries.get(country) || 0) + 1);
+    devices.set(device, (devices.get(device) || 0) + 1);
+  }
+  const signupTrend = [];
+  for (let offset = 29; offset >= 0; offset -= 1) {
+    const date = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - offset));
+    const day = date.toISOString().slice(0, 10);
+    signupTrend.push({ date: day, count: signupCounts.get(day) || 0 });
+  }
+  const distribution = (counts) => Array.from(counts, ([label, count]) => ({ label, count }))
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+  return json({
+    total: users.length,
+    users,
+    insights: {
+      signup_trend: signupTrend,
+      signup_methods: signupMethods,
+      unverified_count: unverified,
+      signup_countries: distribution(countries),
+      signup_devices: distribution(devices),
+    },
+  }, 200, { "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex, nofollow" });
 }
 
 async function me(request, env) {

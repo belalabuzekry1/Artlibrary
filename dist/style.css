@@ -2965,3 +2965,31 @@ body[data-theme="light"] .auth-error {
   .admin-total { min-width: auto; }
   .admin-table th, .admin-table td { padding: 13px 14px; }
 }
+
+/* Private admin insights */
+.admin-insights { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin: 0 0 26px; }
+.admin-insight-card { min-width: 0; padding: 22px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); box-shadow: 0 12px 36px rgba(0,0,0,.1); }
+.admin-insight-card h2 { margin: 0; color: var(--text); font-size: 17px; }
+.admin-insight-card h3 { margin: 0 0 12px; color: var(--muted); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; }
+.admin-insight-note, .admin-insight-heading p { margin: 5px 0 16px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.admin-trend-card, .admin-distribution-card { grid-column: 1 / -1; }
+.admin-trend-chart { display: block; width: 100%; height: auto; overflow: visible; }
+.admin-chart-axis { stroke: var(--border); stroke-width: 1; }
+.admin-chart-grid { stroke: var(--border); stroke-width: 1; stroke-dasharray: 4 5; }
+.admin-chart-label { fill: var(--muted); font: 11px system-ui, sans-serif; }
+.admin-chart-bar { fill: #9575ff; }
+.admin-chart-empty { fill: var(--border); }
+.admin-insight-number { display: block; margin-top: 10px; color: #a88aff; font-size: clamp(36px, 6vw, 54px); line-height: 1; }
+.admin-distributions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 30px; }
+.admin-bar-row { display: grid; grid-template-columns: minmax(80px, 1fr) 30px minmax(70px, 1.5fr); align-items: center; gap: 10px; margin: 11px 0; }
+.admin-bar-label { overflow: hidden; color: var(--text); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.admin-bar-value { color: var(--muted); font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; }
+.admin-bar-track { display: block; height: 9px; overflow: hidden; border-radius: 99px; background: var(--surface-2); }
+.admin-bar-fill { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #7755e8, #b49bff); }
+.admin-empty-note { margin: 12px 0; color: var(--muted); font-size: 13px; }
+@media (max-width: 700px) {
+  .admin-insights { grid-template-columns: 1fr; gap: 14px; }
+  .admin-trend-card, .admin-distribution-card { grid-column: auto; }
+  .admin-insight-card { padding: 18px; }
+  .admin-distributions { grid-template-columns: 1fr; gap: 20px; }
+}
