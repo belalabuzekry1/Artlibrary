@@ -6,6 +6,7 @@
    ========================================================= */
 
 const SESSION_COOKIE = "al_session";
+const ADMIN_EMAIL = "belalabuzekry@gmail.com";
 const SESSION_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days
 const PBKDF2_ITERATIONS = 100000; // Cloudflare Workers WebCrypto cap
 const MAX_LOGIN_FAILS = 5;
@@ -18,10 +19,11 @@ const VERIFY_MAX_PER_HOUR = 5;
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (!url.pathname.startsWith("/api/")) {
+    if (url.pathname !== "/admin.html" && !url.pathname.startsWith("/api/")) {
       return env.ASSETS.fetch(request);
     }
     try {
+      if (url.pathname === "/admin.html") return await serveAdminPage(request, env);
       return await handleApi(request, env, url);
     } catch (err) {
       return json({ error: "Something went wrong. Please try again." }, 500);
@@ -46,6 +48,7 @@ async function handleApi(request, env, url) {
   if (url.pathname === "/api/register" && request.method === "POST") return register(request, env);
   if (url.pathname === "/api/login" && request.method === "POST") return login(request, env);
   if (url.pathname === "/api/logout" && request.method === "POST") return logout(request, env);
+  if (url.pathname === "/api/admin/users" && request.method === "GET") return adminUsers(request, env);
   if (url.pathname === "/api/me" && request.method === "GET") return me(request, env);
   return json({ error: "Not found" }, 404);
 }
@@ -171,6 +174,29 @@ function readCookie(request, name) {
 
 function readSessionToken(request) {
   return readCookie(request, SESSION_COOKIE);
+}
+
+function isAdmin(user) {
+  return !!user && typeof user.email === "string" && user.email.toLowerCase() === ADMIN_EMAIL;
+}
+
+function notFound() {
+  return new Response(null, { status: 404, headers: { "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex, nofollow" } });
+}
+
+async function getAdminUser(request, env) {
+  const user = await getSessionUser(request, env);
+  return isAdmin(user) ? user : null;
+}
+
+async function serveAdminPage(request, env) {
+  if (request.method !== "GET" && request.method !== "HEAD") return notFound();
+  if (!(await getAdminUser(request, env))) return notFound();
+  const response = await env.ASSETS.fetch(request);
+  const headers = new Headers(response.headers);
+  headers.set("Cache-Control", "private, no-store");
+  headers.set("X-Robots-Tag", "noindex, nofollow");
+  return new Response(request.method === "HEAD" ? null : response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
 async function getSessionUser(request, env) {
@@ -605,6 +631,21 @@ async function logout(request, env) {
   return json({ ok: true }, 200, { "Set-Cookie": clearedCookie() });
 }
 
+async function adminUsers(request, env) {
+  if (!(await getAdminUser(request, env))) return notFound();
+  const result = await env.DB.prepare(
+    "SELECT handle, email, created_at, google_sub, email_verified_at FROM users ORDER BY created_at DESC"
+  ).all();
+  const users = (result.results || []).map((row) => ({
+    handle: row.handle,
+    email: row.email,
+    created_at: row.created_at,
+    signup_method: row.google_sub ? "Google" : "Email",
+    email_verified: !!row.email_verified_at,
+  }));
+  return json({ total: users.length, users }, 200, { "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex, nofollow" });
+}
+
 async function me(request, env) {
   const user = await getSessionUser(request, env);
   if (!user) return json({ error: "Not signed in" }, 401);
@@ -615,6 +656,7 @@ async function me(request, env) {
       handle: user.handle,
       created_at: user.created_at,
       email_verified: !!user.email_verified_at,
+      is_admin: isAdmin(user),
     },
   });
-}
+                          }
