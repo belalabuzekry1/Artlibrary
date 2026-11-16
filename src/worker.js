@@ -634,13 +634,13 @@ async function logout(request, env) {
 async function adminUsers(request, env) {
   if (!(await getAdminUser(request, env))) return notFound();
   const result = await env.DB.prepare(
-    "SELECT handle, email, created_at, google_sub, email_verified_at FROM users ORDER BY created_at DESC"
+    "SELECT handle, email, created_at, password_hash, email_verified_at FROM users ORDER BY created_at DESC"
   ).all();
   const users = (result.results || []).map((row) => ({
     handle: row.handle,
     email: row.email,
     created_at: row.created_at,
-    signup_method: row.google_sub ? "Google" : "Email",
+    signup_method: row.password_hash === OAUTH_ONLY_PASSWORD ? "Google" : "Email",
     email_verified: !!row.email_verified_at,
   }));
   return json({ total: users.length, users }, 200, { "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex, nofollow" });
@@ -659,4 +659,4 @@ async function me(request, env) {
       is_admin: isAdmin(user),
     },
   });
-                          }
+}
