@@ -1118,6 +1118,16 @@ async function deleteAccount(request, env) {
 <p><strong>Reason:</strong><br>${escapeHtml(reasonText)}</p>
 </div>`);
   } catch (err) { /* feedback row is already stored for the dashboard */ }
+  // Remove the member's art: image objects in R2, then the rows.
+  const artRows = await env.DB.prepare("SELECT id, image_key FROM artworks WHERE user_id = ?").bind(user.id).all();
+  for (const row of artRows.results || []) {
+    if (env.IMAGES && row.image_key) {
+      try { await env.IMAGES.delete(row.image_key); } catch (err) { /* row deletion still proceeds */ }
+    }
+  }
+  await env.DB.prepare("DELETE FROM project_items WHERE artwork_id IN (SELECT id FROM artworks WHERE user_id = ?) OR project_id IN (SELECT id FROM projects WHERE user_id = ?)").bind(user.id, user.id).run();
+  await env.DB.prepare("DELETE FROM projects WHERE user_id = ?").bind(user.id).run();
+  await env.DB.prepare("DELETE FROM artworks WHERE user_id = ?").bind(user.id).run();
   await env.DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(user.id).run();
   await env.DB.prepare("DELETE FROM email_tokens WHERE user_id = ?").bind(user.id).run();
   await env.DB.prepare("DELETE FROM auth_codes WHERE user_id = ?").bind(user.id).run();
