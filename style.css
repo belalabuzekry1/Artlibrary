@@ -3389,6 +3389,16 @@ body[data-theme="light"] .form-status.is-error { color: #b3261e; }
     box-shadow: 0 0 0 3px rgba(192, 83, 43, 0.18);
 }
 
+.edit-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+#creation-edit-form label { margin-top: 12px; }
+
+#creation-edit-form .combo { position: relative; }
+
 .account-avatar-row {
     display: flex;
     align-items: center;
