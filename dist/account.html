@@ -27,7 +27,7 @@
 </div>
 </header>
 <main class="artwork-page">
-<div class="container info-page auth-page">
+<div class="container info-page auth-page account-page-wide">
 <div id="account-loading">Loading your account...</div>
 <div id="account-card" hidden>
 <h1 id="account-name">Your account</h1>
@@ -37,15 +37,131 @@
 <button class="secondary-button" id="resend-button" type="button">Resend email</button>
 <p class="auth-note" id="resend-status" hidden></p>
 </div>
+
+<section class="account-section">
+<h2>Profile</h2>
+<div class="account-avatar-row">
+<img id="avatar-img" class="account-avatar" alt="Your profile photo" hidden>
+<div id="avatar-placeholder" class="account-avatar account-avatar-fallback" aria-hidden="true">?</div>
+<div>
+<input type="file" id="avatar-input" accept="image/*" hidden>
+<button class="secondary-button" id="avatar-change" type="button">Change photo</button>
+<button class="link-button" id="avatar-remove" type="button" hidden>Remove</button>
+</div>
+</div>
+<form id="profile-form" class="auth-form" novalidate>
+<label>Name
+<input name="name" type="text" autocomplete="name" minlength="2" maxlength="60" required>
+</label>
+<label>Bio
+<textarea name="bio" rows="3" maxlength="280" placeholder="A line or two about you and your AI art"></textarea>
+</label>
+<p class="form-status" id="profile-status" hidden></p>
+<button class="primary-button" type="submit">Save profile</button>
+</form>
+</section>
+
+<section class="account-section">
+<h2>Account details</h2>
 <div class="auth-details">
 <p><span>Email</span><strong id="account-email"></strong></p>
 <p><span>Portfolio link</span><strong id="account-handle"></strong></p>
 <p><span>Email status</span><strong id="account-verified"></strong></p>
 <p><span>Member since</span><strong id="account-since"></strong></p>
 </div>
-<p class="auth-note">Uploads and your public portfolio page are coming soon - this is where your AI art and prompts will live.</p>
+<button class="secondary-button" id="email-change-open" type="button">Change email</button>
+<div id="email-change-box" class="account-subbox" hidden>
+<div id="email-step-1">
+<p class="auth-note">Enter the new email. We will send a 6-digit code to your current address to confirm it is you.</p>
+<form id="email-request-form" class="auth-form" novalidate>
+<label>New email
+<input name="newEmail" type="email" autocomplete="email" required placeholder="new@example.com">
+</label>
+<button class="secondary-button" type="submit">Send code to current email</button>
+</form>
+</div>
+<div id="email-step-2" hidden>
+<p class="auth-note">We sent a code to <strong id="email-old-addr"></strong>. Enter it to finish changing your email.</p>
+<form id="email-confirm-form" class="auth-form" novalidate>
+<label>Code from the email
+<input name="code" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required placeholder="6-digit code">
+</label>
+<button class="primary-button" type="submit">Confirm new email</button>
+</form>
+</div>
+<p class="form-status" id="email-status" hidden></p>
+</div>
+</section>
+
+<section class="account-section">
+<h2 id="password-heading">Password</h2>
+<p class="auth-note" id="password-intro">Change your password using a 6-digit code we email to you.</p>
+<button class="secondary-button" id="password-open" type="button">Change password</button>
+<div id="password-box" class="account-subbox" hidden>
+<div id="password-step-1">
+<p class="auth-note">We will send a 6-digit code to <strong id="password-email-addr"></strong>.</p>
+<button class="secondary-button" id="password-send" type="button">Send code</button>
+</div>
+<div id="password-step-2" hidden>
+<form id="password-confirm-form" class="auth-form" novalidate>
+<label>Code from the email
+<input name="code" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required placeholder="6-digit code">
+</label>
+<label>New password
+<input name="password" type="password" autocomplete="new-password" minlength="8" maxlength="128" required placeholder="At least 8 characters">
+</label>
+<button class="primary-button" type="submit">Confirm new password</button>
+</form>
+</div>
+<p class="form-status" id="password-status" hidden></p>
+</div>
+</section>
+
+<section class="account-section">
+<h2>Your art</h2>
+<p class="auth-note">Publish your AI art with its prompt, and share your public portfolio at artlibrary.ai/<span id="account-handle-inline"></span>.</p>
+<p><a class="primary-button" href="upload.html">Upload artwork</a> <a class="secondary-button" id="account-portfolio-link" href="#">View your portfolio</a></p>
+<p class="auth-note">Having a problem with your account? Email us directly at <a href="mailto:belalabuzekry@gmail.com">belalabuzekry@gmail.com</a></p>
 <p class="auth-error" id="account-error" hidden></p>
 <button class="primary-button" id="signout-button" type="button">Sign out</button>
+</section>
+
+<section class="account-section account-danger">
+<h2>Deactivate or delete</h2>
+<p class="auth-note">Deactivating hides your account for a while and brings it back when you sign in again. Deleting removes your account for good.</p>
+<div class="danger-row">
+<button class="secondary-button" id="deactivate-open" type="button">Deactivate temporarily</button>
+<button class="danger-button" id="delete-open" type="button">Delete account</button>
+</div>
+<div id="deactivate-box" class="account-subbox" hidden>
+<p class="auth-note">Choose how long to step away. Sign in again any time to restore your account.</p>
+<form id="deactivate-form" class="auth-form" novalidate>
+<label>Deactivate for
+<select name="period">
+<option value="day">1 day</option>
+<option value="week">1 week</option>
+<option value="month">1 month</option>
+<option value="3months">3 months</option>
+</select>
+</label>
+<button class="danger-button" type="submit">Deactivate my account</button>
+</form>
+</div>
+<div id="delete-box" class="account-subbox" hidden>
+<p class="auth-note">This permanently deletes your account. It cannot be undone.</p>
+<form id="delete-form" class="auth-form" novalidate>
+<label>Why are you leaving? (optional)
+<textarea name="reason" rows="3" maxlength="1000" placeholder="Your answer goes straight to the site owner and helps us improve"></textarea>
+</label>
+<label>Type your username <strong id="delete-username"></strong> to confirm
+<input name="confirm" type="text" autocomplete="off" required>
+</label>
+<button class="danger-button" type="submit">Delete my account permanently</button>
+</form>
+</div>
+<p class="form-status" id="danger-status" hidden></p>
+</section>
+
 </div>
 </div>
 </main>
