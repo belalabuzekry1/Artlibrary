@@ -74,6 +74,12 @@
 <tbody id="admin-reports"></tbody>
 </table></div>
 </section>
+<section id="admin-maintenance" class="admin-insight-card" style="margin:22px 0" hidden>
+  <h2>Maintenance</h2>
+  <p class="admin-insight-note">One-off fixes for existing data.</p>
+  <p><button class="secondary-button" id="backfill-categories" type="button">Auto-categorize existing artworks</button>
+  <span class="admin-insight-note" id="backfill-categories-status"></span></p>
+</section>
 <div id="admin-table-wrap" class="admin-table-wrap" hidden>
 <table class="admin-table">
 <thead><tr><th>Username</th><th>Email</th><th>Signed up</th><th>At signup</th><th>Method</th><th>Email verified</th><th>Status</th><th>Latest sign-in</th></tr></thead>
@@ -270,6 +276,26 @@
     });
     section.hidden = false;
   }).catch(function () { /* dashboard extra; ignore */ });
+
+  var maintenance = document.getElementById("admin-maintenance");
+  var backfillBtn = document.getElementById("backfill-categories");
+  if (maintenance && backfillBtn) {
+    maintenance.hidden = false;
+    backfillBtn.addEventListener("click", function () {
+      backfillBtn.disabled = true;
+      var st = document.getElementById("backfill-categories-status");
+      st.textContent = " Working...";
+      fetch("/api/admin/backfill-categories", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: "{}" }).then(function (r) {
+        return r.json().catch(function () { return {}; }).then(function (d) {
+          backfillBtn.disabled = false;
+          st.textContent = r.ok ? " Done - updated " + (d.updated || 0) + " artworks." : " " + (d.error || "Failed.");
+        });
+      }).catch(function () {
+        backfillBtn.disabled = false;
+        st.textContent = " Network error.";
+      });
+    });
+  }
 })();
 </script>
 </body>
