@@ -3504,6 +3504,30 @@ body[data-theme="light"] .danger-button { color: #b3261e; border-color: rgba(210
     position: relative;
     display: block;
 }
+.stat-ico {
+    width: 14px;
+    height: 14px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    vertical-align: -2.5px;
+}
+.stat-ico-dot {
+    fill: currentColor;
+    stroke: none;
+}
+.latest-stats .stat-ico,
+.gallery-card-stats .stat-ico {
+    width: 11px;
+    height: 11px;
+    vertical-align: -1px;
+}
+.stat-saves,
+.stat-views {
+    opacity: 0.85;
+}
 .latest-stats {
     position: absolute;
     left: 8px;
