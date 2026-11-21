@@ -1201,6 +1201,32 @@ const CATEGORY_KEYWORDS = {
   "Sci-Fi": ["sci-fi", "scifi", "cyberpunk", "futuristic", "robot", "spaceship", "neon city", "cyborg", "dystopian", "space station", "alien", "mecha"],
 };
 
+async function classifyImageCategory(env, bytes) {
+  if (!env.AI) return "";
+  try {
+    const res = await env.AI.run("@cf/meta/llama-3.2-11b-vision-instruct", {
+      prompt: "<|image|>Look at this AI-generated artwork and choose the single best-fitting category from this exact list: " + CATEGORIES.join(", ") + ". Reply with only the category name, nothing else.",
+      image: Array.from(bytes),
+      max_tokens: 20,
+    });
+    const text = ((res && res.response) || "").toLowerCase();
+    for (const c of CATEGORIES) {
+      if (text.includes(c.toLowerCase())) return c;
+    }
+    return "";
+  } catch (e) {
+    return "";
+  }
+}
+
+async function pickCategory(env, title, prompt, tags, bytes) {
+  if (bytes && bytes.length) {
+    const aiCat = await classifyImageCategory(env, bytes);
+    if (aiCat) return aiCat;
+  }
+  return guessCategory(title, prompt, tags);
+}
+
 function guessCategory(title, prompt, tags) {
   const text = (" " + [title || "", prompt || "", (tags || []).join(" ")].join(" ").toLowerCase().replace(/[^a-z0-9&\- ]/g, " ") + " ");
   let best = "";
@@ -1273,7 +1299,7 @@ async function createArtwork(request, env) {
   const now = new Date().toISOString();
   await env.DB.prepare(
     "INSERT INTO artworks (id, user_id, title, prompt, model, tags, editable_hint, image_key, width, height, created_at, category) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-  ).bind(id, user.id, title, prompt, model, (tags || []).join(","), hint, key, width, height, now, guessCategory(title, prompt, tags || [])).run();
+  ).bind(id, user.id, title, prompt, model, (tags || []).join(","), hint, key, width, height, now, await pickCategory(env, title, prompt, tags || [], bytes)).run();
   if (projectId) {
     await env.DB.prepare("INSERT OR IGNORE INTO project_items (project_id, artwork_id, added_at) VALUES (?, ?, ?)").bind(projectId, id, now).run();
     await env.DB.prepare("UPDATE projects SET cover_artwork_id = COALESCE(cover_artwork_id, ?) WHERE id = ?").bind(id, projectId).run();
@@ -1367,7 +1393,16 @@ async function updateArtwork(request, env, artworkId, action) {
     const hint = typeof body.editableHint === "string" ? body.editableHint.trim().slice(0, HINT_MAX) : "";
     const tags = cleanTags(body.tags);
     let category = typeof body.category === "string" ? body.category.trim() : "";
-    if (!category) category = guessCategory(title, prompt, tags || []);
+    if (!category) {
+      let bytes = null;
+      if (env.IMAGES) {
+        try {
+          const obj = await env.IMAGES.get(artwork.image_key);
+          if (obj) bytes = new Uint8Array(await obj.arrayBuffer());
+        } catch (e) { /* keyword fallback */ }
+      }
+      category = await pickCategory(env, title, prompt, tags || [], bytes);
+    }
     else if (CATEGORIES.indexOf(category) === -1) return json({ error: "Unknown category." }, 400);
     if (!title) return json({ error: "Give your artwork a title." }, 400);
     if (!prompt) return json({ error: "Add the prompt." }, 400);
