@@ -41,7 +41,13 @@ export default {
           return new Response(res.body, { status: res.status, headers });
         }
       }
-      return env.ASSETS.fetch(request);
+      const assetRes = await env.ASSETS.fetch(request);
+      if (assetRes.status !== 404) return assetRes;
+      // Serve the custom 404 page for unknown paths.
+      const notFoundUrl = new URL(request.url);
+      notFoundUrl.pathname = "/404.html";
+      const notFoundRes = await env.ASSETS.fetch(new Request(notFoundUrl.toString(), request));
+      return new Response(notFoundRes.body, { status: 404, headers: notFoundRes.headers });
     }
     try {
       if (url.pathname === "/admin.html") return await serveAdminPage(request, env);
