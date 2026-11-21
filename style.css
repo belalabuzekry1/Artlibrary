@@ -3276,6 +3276,7 @@ body[data-theme="light"] .danger-button { color: #b3261e; border-color: rgba(210
 .portfolio-handle { opacity: 0.7; margin: 0 0 8px; }
 .portfolio-bio { margin: 0 0 4px; max-width: 60ch; }
 .portfolio-since { opacity: 0.6; font-size: 0.9rem; margin: 0; }
+#portfolio-upload { display: inline-block; margin-top: 0.75rem; }
 .portfolio-section-title { margin: 36px 0 16px; }
 
 .gallery-grid {
