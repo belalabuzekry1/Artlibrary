@@ -32,6 +32,71 @@
         var card = document.getElementById("upload-card");
         var image = null; // {dataUrl, width, height}
 
+        /* AI model: dropdown list + free text */
+        var MODEL_OPTIONS = ["Midjourney", "DALL-E / ChatGPT", "Gemini (Nano Banana)", "Stable Diffusion", "Flux", "Ideogram", "Leonardo AI", "Adobe Firefly", "Recraft", "Runway", "Instinct"];
+        var combo = document.getElementById("model-combo");
+        if (combo) {
+            var modelInput = combo.querySelector("input[name=model]");
+            var modelToggle = document.getElementById("model-toggle");
+            var listbox = document.getElementById("model-listbox");
+            var renderModelList = function () {
+                var f = (modelInput.value || "").trim().toLowerCase();
+                listbox.textContent = "";
+                MODEL_OPTIONS.filter(function (m) { return !f || m.toLowerCase().indexOf(f) > -1; }).forEach(function (m) {
+                    var b = document.createElement("button");
+                    b.type = "button";
+                    b.className = "combo-option";
+                    b.textContent = m;
+                    b.addEventListener("click", function () { modelInput.value = m; listbox.hidden = true; modelInput.focus(); });
+                    listbox.appendChild(b);
+                });
+                if (!listbox.children.length) {
+                    var em = document.createElement("div");
+                    em.className = "combo-empty";
+                    em.textContent = "No match - your custom model name will be used";
+                    listbox.appendChild(em);
+                }
+            };
+            modelToggle.addEventListener("click", function (e) { e.preventDefault(); if (listbox.hidden) { renderModelList(); listbox.hidden = false; } else { listbox.hidden = true; } });
+            modelInput.addEventListener("focus", function () { renderModelList(); listbox.hidden = false; });
+            modelInput.addEventListener("input", function () { renderModelList(); listbox.hidden = false; });
+            modelInput.addEventListener("keydown", function (e) { if (e.key === "Escape") listbox.hidden = true; });
+            document.addEventListener("click", function (e) { if (!combo.contains(e.target)) listbox.hidden = true; });
+        }
+
+        /* Tags as chips: Enter or comma adds one */
+        var chipsWrap = document.getElementById("tags-chips");
+        var tagsField = document.getElementById("tags-field");
+        var tagChips = [];
+        var renderChips = function () {
+            if (!chipsWrap) return;
+            Array.prototype.slice.call(chipsWrap.querySelectorAll(".tag-chip")).forEach(function (n) { n.remove(); });
+            tagChips.forEach(function (t, i) {
+                var chip = document.createElement("span");
+                chip.className = "tag-chip";
+                chip.appendChild(document.createTextNode(t));
+                var x = document.createElement("button");
+                x.type = "button";
+                x.className = "tag-chip-x";
+                x.setAttribute("aria-label", "Remove tag " + t);
+                x.textContent = "\u00D7";
+                x.addEventListener("click", function () { tagChips.splice(i, 1); renderChips(); });
+                chip.appendChild(x);
+                chipsWrap.insertBefore(chip, tagsField);
+            });
+        };
+        var addTag = function (raw) {
+            var t = (raw || "").trim().replace(/,+$/, "").trim();
+            if (t && tagChips.indexOf(t) === -1 && tagChips.length < 10) { tagChips.push(t); renderChips(); }
+        };
+        if (tagsField) {
+            tagsField.addEventListener("keydown", function (e) {
+                if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addTag(tagsField.value); tagsField.value = ""; }
+                else if (e.key === "Backspace" && !tagsField.value && tagChips.length) { tagChips.pop(); renderChips(); }
+            });
+            tagsField.addEventListener("blur", function () { addTag(tagsField.value); tagsField.value = ""; });
+        }
+
         fetch("api/me", { credentials: "same-origin" }).then(function (r) {
             if (!r.ok) { window.location.href = "login.html"; return null; }
             return r.json();
@@ -105,7 +170,8 @@
             errorEl.hidden = true;
             if (!image) { showError(errorEl, "Choose an image first."); return; }
             if (!form.elements.confirmOwnership.checked) { showError(errorEl, "Please confirm the artwork is yours and made with AI."); return; }
-            var tags = (form.elements.tags.value || "").split(",").map(function (t) { return t.trim(); }).filter(Boolean);
+            addTag(tagsField ? tagsField.value : "");
+            var tags = tagChips.slice(0, 10);
             var button = form.querySelector("button[type=submit]");
             button.disabled = true;
             button.textContent = "Publishing...";
