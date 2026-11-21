@@ -2962,6 +2962,96 @@ body[data-theme="light"] .artwork-meta span:first-child { color: #a04522; }
     opacity: 1;
 }
 
+/* Reactions: like / save / hide / report */
+.reaction-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 16px 0;
+}
+
+.reaction-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--text);
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.92rem;
+    padding: 8px 16px;
+    transition: border-color .15s ease, background .15s ease;
+}
+
+.reaction-btn:hover {
+    border-color: var(--blue);
+}
+
+.reaction-btn.is-active {
+    background: var(--blue);
+    border-color: var(--blue);
+    color: #fff;
+}
+
+.reaction-report {
+    opacity: 0.75;
+}
+
+.report-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    padding: 16px;
+}
+
+.report-dialog {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius, 16px);
+    max-width: 420px;
+    width: 100%;
+    padding: 20px;
+}
+
+.report-dialog h3 {
+    margin-top: 0;
+}
+
+.report-reason {
+    display: block;
+    padding: 8px 4px;
+    cursor: pointer;
+}
+
+.report-dialog textarea {
+    width: 100%;
+    margin-top: 10px;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font: inherit;
+}
+
+.report-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 14px;
+}
+
+.report-error {
+    color: #d9534f;
+}
+
+.report-thanks {
+    margin: 0;
+}
+
 .auth-form .primary-button {
     border: 0;
     cursor: pointer;
