@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portfolio | ArtLibrary</title>
+<meta name="description" content="An ArtLibrary creator portfolio.">
+<link rel="icon" href="favicon-32.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="site-header">
+<div class="container header-inner">
+<a href="index.html" class="brand"><img src="logo.png" data-dark-logo="logo.png" data-light-logo="logo-light-bg.png" alt="ArtLibrary" class="site-logo"></a>
+<nav class="desktop-nav">
+<a href="index.html#explore">Explore</a>
+<a href="how-to-use.html">How to use</a>
+<a href="about.html">About</a>
+<a href="contact.html">Contact</a>
+</nav>
+<div class="header-actions">
+<button class="theme-button" aria-label="Toggle theme">&#9788;</button>
+<a href="index.html" class="back-home">&larr; Back</a>
+<button class="menu-button" aria-label="Open menu">&#9776;</button>
+</div>
+</div>
+</header>
+<main class="artwork-page">
+<div class="container portfolio-page">
+<div id="portfolio-loading">Loading portfolio...</div>
+<div id="portfolio-card" hidden>
+<div class="portfolio-head">
+<img id="portfolio-avatar" class="account-avatar" alt="" hidden>
+<div id="portfolio-avatar-fallback" class="account-avatar account-avatar-fallback" aria-hidden="true">?</div>
+<div>
+<h1 id="portfolio-name"></h1>
+<p class="portfolio-handle" id="portfolio-handle"></p>
+<p class="portfolio-bio" id="portfolio-bio"></p>
+<p class="portfolio-since" id="portfolio-since"></p>
+</div>
+</div>
+<div id="portfolio-projects"></div>
+<h2 class="portfolio-section-title" id="portfolio-artworks-title" hidden>Artworks</h2>
+<div class="gallery-grid" id="portfolio-grid"></div>
+<p class="auth-note" id="portfolio-empty" hidden>No artworks yet.</p>
+</div>
+<div id="portfolio-missing" hidden>
+<h1>Portfolio not found</h1>
+<p>This portfolio does not exist (yet).</p>
+<p><a class="primary-button" href="index.html">Back to ArtLibrary</a></p>
+</div>
+</div>
+</main>
+<footer class="site-footer">
+<div class="container footer-bottom">
+<span>&copy; 2026 ArtLibrary.ai</span>
+<span><a href="about.html">About</a> &middot; <a href="how-to-use.html">How to use</a> &middot; <a href="contact.html">Contact</a></span>
+</div>
+</footer>
+<script src="script.js"></script>
+<script src="community.js"></script>
+</body>
+</html>
