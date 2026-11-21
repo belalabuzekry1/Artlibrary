@@ -467,6 +467,19 @@
                 });
                 editBtn.hidden = false;
             });
+            document.getElementById("creation-delete").addEventListener("click", function () {
+                if (!window.confirm('Delete "' + (a.title || "this artwork") + '" for good? This removes the image and its likes, saves and comments.')) return;
+                postJson("api/artworks/" + a.id + "/delete", {}).then(function (res) {
+                    if (res.status >= 200 && res.status < 300) { window.location.href = "/" + owner.handle; return; }
+                    var status = document.getElementById("creation-edit-status");
+                    status.textContent = res.data.error || "Could not delete. Please try again.";
+                    status.hidden = false;
+                }).catch(function () {
+                    var status = document.getElementById("creation-edit-status");
+                    status.textContent = "Could not reach the server. Please try again.";
+                    status.hidden = false;
+                });
+            });
             form.addEventListener("submit", function (e) {
                 e.preventDefault();
                 var status = document.getElementById("creation-edit-status");
