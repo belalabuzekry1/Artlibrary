@@ -671,11 +671,11 @@
                 saveBtn.className = "primary-button";
                 saveBtn.textContent = "Save";
                 row.replaceChild(input, meta);
-                row.replaceChild(saveBtn, renameBtn);
+                actions.replaceChild(saveBtn, renameBtn);
                 input.focus();
                 function finish(ok) {
                     row.replaceChild(meta, input);
-                    row.replaceChild(renameBtn, saveBtn);
+                    actions.replaceChild(renameBtn, saveBtn);
                     if (ok) name.textContent = input.value.trim() || p.title;
                 }
                 function save() {
