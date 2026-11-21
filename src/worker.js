@@ -285,16 +285,23 @@ async function adminAiTest(request, env) {
   const obj = await env.IMAGES.get(row.image_key);
   if (!obj) return json({ error: "no image" }, 404);
   const bytes = new Uint8Array(await obj.arrayBuffer());
-  try {
-    const res = await env.AI.run("@cf/meta/llama-3.2-11b-vision-instruct", {
-      prompt: "<|image|>Look at this AI-generated artwork and choose the single best-fitting category from this exact list: " + CATEGORIES.join(", ") + ". Reply with only the category name, nothing else.",
-      image: Array.from(bytes),
-      max_tokens: 20,
-    });
-    return json({ ok: true, res, size: bytes.length });
-  } catch (e) {
-    return json({ ok: false, error: String(e && e.message || e), size: bytes.length }, 500);
+  const img = Array.from(bytes);
+  const M = "@cf/meta/llama-3.2-11b-vision-instruct";
+  const out = { size: bytes.length };
+  const tries = {
+    v1_prompt_maxtok: { prompt: "<|image|>Pick one category: " + CATEGORIES.join(", ") + ". Reply with only the category name.", image: img, max_tokens: 20 },
+    v2_prompt_plain: { prompt: "<|image|>Pick one category: " + CATEGORIES.join(", ") + ". Reply with only the category name.", image: img },
+    v3_messages: { messages: [{ role: "user", content: "<|image|>Pick one category: " + CATEGORIES.join(", ") + ". Reply with only the category name." }], image: img, max_tokens: 20 },
+  };
+  for (const [k, inp] of Object.entries(tries)) {
+    try {
+      const r = await env.AI.run(M, inp);
+      out[k] = { ok: true, res: r };
+    } catch (e) {
+      out[k] = { ok: false, error: String(e && e.message || e) };
+    }
   }
+  return json(out);
 }
 
 async function getAdminUser(request, env) {
@@ -1775,4 +1782,4 @@ async function getPortfolio(request, env, handle) {
     artworks: (artworks.results || []).map(function (r) { const c = artworkRow(r); c.likes = r.likes || 0; c.saves = r.saves || 0; return c; }),
     projects,
   });
-  }
+                                        }
