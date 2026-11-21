@@ -287,10 +287,12 @@ async function adminAiTest(request, env) {
   if (!obj) return json({ error: "no image" }, 404);
   const img = Array.from(new Uint8Array(await obj.arrayBuffer()));
   const Q = "Look at this AI-generated artwork and choose the single best-fitting category from this exact list: " + CATEGORIES.join(", ") + ". Reply with only the category name, nothing else.";
+  const bytes = new Uint8Array(img);
   const out = {};
   const tries = {
-    v5_llama_content_array: ["@cf/meta/llama-3.2-11b-vision-instruct", { messages: [{ role: "user", content: [{ type: "text", text: Q }, { type: "image", image: img }] }], max_tokens: 20 }],
-    v6_llava_prompt_image: ["@cf/llava-hf/llava-1.5-7b-hf", { prompt: "<image>\nUSER: " + Q + "\nASSISTANT:", image: img, max_tokens: 20 }],
+    v7_no_tag: ["@cf/meta/llama-3.2-11b-vision-instruct", { prompt: Q, image: img, max_tokens: 20 }],
+    v8_typed_array: ["@cf/meta/llama-3.2-11b-vision-instruct", { prompt: "<|image|>" + Q, image: bytes, max_tokens: 20 }],
+    v9_b64: ["@cf/meta/llama-3.2-11b-vision-instruct", { prompt: "<|image|>" + Q, image: btoa(String.fromCharCode.apply(null, img)), max_tokens: 20 }],
   };
   for (const [k, [m, inp]] of Object.entries(tries)) {
     try {
@@ -1783,4 +1785,4 @@ async function getPortfolio(request, env, handle) {
     artworks: (artworks.results || []).map(function (r) { const c = artworkRow(r); c.likes = r.likes || 0; c.saves = r.saves || 0; return c; }),
     projects,
   });
-                        }
+                      }
