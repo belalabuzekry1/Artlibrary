@@ -362,7 +362,7 @@
             var info = el("div", "art-info");
             var row = el("div", "art-title-row");
             row.appendChild(el("h3", null, a.title));
-            row.appendChild(el("span", "category", "@" + a.handle));
+            row.appendChild(el("span", "category", a.category || ("@" + a.handle)));
             info.appendChild(row);
             if (a.model) info.appendChild(el("span", "model", "\u2726 " + a.model));
             info.appendChild(el("p", "prompt-text", a.prompt));
@@ -387,8 +387,8 @@
                 if (e.target !== card) return;
                 if (e.key === "Enter" || e.key === " ") { e.preventDefault(); location.href = dest; }
             });
-            card._it = { id: a.id, title: a.title, category: "@" + a.handle, model: a.model || "", prompt: a.prompt };
-            card._text = norm([a.title, a.handle, a.model || "", a.prompt].join(" "));
+            card._it = { id: a.id, title: a.title, category: a.category || ("@" + a.handle), model: a.model || "", prompt: a.prompt };
+            card._text = norm([a.title, a.handle, a.category || "", a.model || "", a.prompt].join(" "));
             card._memberViews = a.views || 0;
             card._memberLikes = a.likes || 0;
             return card;
