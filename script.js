@@ -418,6 +418,23 @@
             render();
         }).catch(function () { /* static featured stays */ });
 
+        /* Top 5 artists this week by community points */
+        fetch("api/leaderboard").then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+            if (!d || !d.leaderboard || !d.leaderboard.length) return;
+            var box = document.getElementById("leaderboard");
+            var list = document.getElementById("leaderboard-list");
+            if (!box || !list) return;
+            d.leaderboard.forEach(function (entry) {
+                var li = el("li", "leaderboard-row");
+                var link = el("a", "leaderboard-name", entry.name || entry.handle);
+                link.href = "/" + entry.handle;
+                li.appendChild(link);
+                li.appendChild(el("span", "leaderboard-points", entry.points + " pts"));
+                list.appendChild(li);
+            });
+            box.hidden = false;
+        }).catch(function () { /* leaderboard stays hidden */ });
+
         /* Works the member hid stay out of their explore grid */
         fetch("api/my/hides", { credentials: "same-origin" }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
             if (!d || !d.hides) return;
