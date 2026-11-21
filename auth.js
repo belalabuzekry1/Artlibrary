@@ -589,6 +589,43 @@
         });
     });
 
+    /* ---------- saved art ---------- */
+    (function () {
+        var section = document.getElementById("saved-section");
+        var grid = document.getElementById("saved-grid");
+        if (!section || !grid) return;
+        var items = (window.ARTLIBRARY && window.ARTLIBRARY.items) || [];
+        var byId = {};
+        items.forEach(function (it) { byId[it.id] = it; });
+        fetch("api/my/saves", { credentials: "same-origin" }).then(function (r) {
+            return r.ok ? r.json() : null;
+        }).then(function (d) {
+            if (!d || !d.saves || !d.saves.length) return;
+            d.saves.forEach(function (sv) {
+                var card = document.createElement("a");
+                card.className = "saved-card";
+                var img = document.createElement("img");
+                img.loading = "lazy";
+                var label = document.createElement("span");
+                if (sv.id) {
+                    card.href = "creation.html?id=" + encodeURIComponent(sv.id);
+                    img.src = sv.image; img.alt = sv.title;
+                    label.textContent = sv.title;
+                } else {
+                    var it = byId[sv.static_id];
+                    card.href = "art/" + sv.static_id + ".html";
+                    img.src = it ? it.image : "";
+                    img.alt = it ? it.title : sv.static_id;
+                    label.textContent = it ? it.title : sv.static_id;
+                }
+                card.appendChild(img);
+                card.appendChild(label);
+                grid.appendChild(card);
+            });
+            section.hidden = false;
+        }).catch(function () { /* signed out or offline: section stays hidden */ });
+    })();
+
     /* ---------- sign out ---------- */
     var out = document.getElementById("signout-button");
     out.addEventListener("click", function () {
