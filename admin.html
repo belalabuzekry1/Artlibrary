@@ -81,8 +81,9 @@
   <span class="admin-insight-note" id="backfill-categories-status"></span></p>
 </section>
 <div id="admin-table-wrap" class="admin-table-wrap" hidden>
+<p><input type="search" id="admin-user-search" placeholder="Search by name, username or email" style="width:100%;max-width:420px;padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font:inherit"></p>
 <table class="admin-table">
-<thead><tr><th>Username</th><th>Email</th><th>Signed up</th><th>At signup</th><th>Method</th><th>Email verified</th><th>Status</th><th>Latest sign-in</th></tr></thead>
+<thead><tr><th>Username</th><th>Email</th><th>Signed up</th><th>At signup</th><th>Method</th><th>Email verified</th><th>Status</th><th>Latest sign-in</th><th></th></tr></thead>
 <tbody id="admin-users"></tbody>
 </table>
 </div>
@@ -203,6 +204,15 @@
     total.textContent = String(data.total);
     status.hidden = true;
     renderInsights(data);
+    var searchBox = document.getElementById("admin-user-search");
+    if (searchBox) {
+      searchBox.addEventListener("input", function () {
+        var q = searchBox.value.trim().toLowerCase();
+        Array.prototype.forEach.call(tbody.children, function (row) {
+          row.hidden = q && row.textContent.toLowerCase().indexOf(q) === -1;
+        });
+      });
+    }
     (data.users || []).forEach(function (user) {
       var row = document.createElement("tr");
       row.appendChild(cell(user.handle));
@@ -216,6 +226,29 @@
       row.appendChild(cell(user.last_login_at
         ? dateTime(user.last_login_at) + " · " + place(user.last_login_city, user.last_login_country) + " · " + (user.last_login_device_type || "Unavailable")
         : "No sign-in recorded yet"));
+      var actionCell = document.createElement("td");
+      if (user.email && user.email.toLowerCase() !== "belalabuzekry@gmail.com") {
+        var delBtn = document.createElement("button");
+        delBtn.type = "button";
+        delBtn.className = "secondary-button danger-button";
+        delBtn.textContent = "Delete";
+        delBtn.addEventListener("click", function () {
+          if (!window.confirm('Delete user "' + user.handle + '" (' + user.email + ') for good? This removes their account, artworks, images, likes, saves and notifications.')) return;
+          delBtn.disabled = true;
+          fetch("/api/admin/users/delete", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: user.id }) }).then(function (r) {
+            return r.json().catch(function () { return {}; }).then(function (d) {
+              if (r.ok) { row.remove(); return; }
+              delBtn.disabled = false;
+              alert(d.error || "Could not delete the user.");
+            });
+          }).catch(function () {
+            delBtn.disabled = false;
+            alert("Could not reach the server.");
+          });
+        });
+        actionCell.appendChild(delBtn);
+      }
+      row.appendChild(actionCell);
       tbody.appendChild(row);
     });
     if (!data.users || !data.users.length) status.textContent = "No registered users yet.";
