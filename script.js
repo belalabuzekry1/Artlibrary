@@ -813,6 +813,84 @@
             var first = (data.user.name || "").split(" ")[0];
             link.textContent = first || "Account";
             if (data.user.is_admin === true) adminLink.hidden = false;
+
+            /* notifications bell with unread badge */
+            var bell = document.createElement("button");
+            bell.type = "button";
+            bell.className = "notif-bell";
+            bell.setAttribute("aria-label", "Notifications");
+            bell.textContent = "\uD83D\uDD14";
+            var badge = document.createElement("span");
+            badge.className = "notif-badge";
+            badge.hidden = true;
+            bell.appendChild(badge);
+            nav.insertBefore(bell, link);
+            var panel = null;
+            function timeAgo(iso) {
+                var secs = Math.max(1, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
+                if (secs < 60) return "just now";
+                var mins = Math.floor(secs / 60);
+                if (mins < 60) return mins + "m ago";
+                var hrs = Math.floor(mins / 60);
+                if (hrs < 24) return hrs + "h ago";
+                return Math.floor(hrs / 24) + "d ago";
+            }
+            function refreshBadge() {
+                fetch(base + "api/notifications", { credentials: "same-origin" }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+                    if (!d) return;
+                    if (d.unread > 0) { badge.textContent = d.unread > 9 ? "9+" : String(d.unread); badge.hidden = false; }
+                    else badge.hidden = true;
+                }).catch(function () { /* offline */ });
+            }
+            function closePanel() { if (panel) { panel.remove(); panel = null; } }
+            function openPanel() {
+                panel = document.createElement("div");
+                panel.className = "notif-panel";
+                panel.setAttribute("role", "dialog");
+                panel.setAttribute("aria-label", "Notifications");
+                var head = document.createElement("div");
+                head.className = "notif-head";
+                head.textContent = "Notifications";
+                panel.appendChild(head);
+                var list = document.createElement("div");
+                list.className = "notif-list";
+                list.textContent = "Loading\u2026";
+                panel.appendChild(list);
+                document.body.appendChild(panel);
+                fetch(base + "api/notifications", { credentials: "same-origin" }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+                    list.textContent = "";
+                    if (!d || !d.notifications || !d.notifications.length) {
+                        var empty = document.createElement("p");
+                        empty.className = "notif-empty";
+                        empty.textContent = "No activity yet. When someone likes or saves your art, it shows up here.";
+                        list.appendChild(empty);
+                        return;
+                    }
+                    d.notifications.forEach(function (n) {
+                        var item = document.createElement("a");
+                        item.className = "notif-item" + (n.read_at ? "" : " is-unread");
+                        item.href = base + "creation.html?id=" + encodeURIComponent(n.artwork_id);
+                        var who = n.actor_name || ("@" + (n.actor_handle || "someone"));
+                        var what = n.kind === "like" ? "liked" : "saved";
+                        item.appendChild(el("span", "notif-text", who + " " + what + " \u201C" + (n.title || "your art") + "\u201D"));
+                        item.appendChild(el("span", "notif-time", timeAgo(n.created_at)));
+                        list.appendChild(item);
+                    });
+                    if (d.unread > 0) {
+                        fetch(base + "api/notifications/read", { method: "POST", credentials: "same-origin" }).then(function () { badge.hidden = true; }).catch(function () { /* keep badge */ });
+                    }
+                }).catch(function () { list.textContent = "Could not load notifications."; });
+            }
+            bell.addEventListener("click", function (e) {
+                e.stopPropagation();
+                if (panel) closePanel(); else openPanel();
+            });
+            document.addEventListener("click", function (e) {
+                if (panel && !panel.contains(e.target) && e.target !== bell) closePanel();
+            });
+            document.addEventListener("keydown", function (e) { if (e.key === "Escape") closePanel(); });
+            refreshBadge();
+            setInterval(refreshBadge, 60000);
         }).catch(function () { /* no backend: keep the plain link */ });
     } catch (e) { /* nav auth entry is optional */ }
 })();
