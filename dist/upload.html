@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Upload artwork | ArtLibrary</title>
+<meta name="description" content="Share your AI artwork and the prompt behind it on ArtLibrary.">
+<meta name="robots" content="noindex">
+<link rel="icon" href="favicon-32.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="site-header">
+<div class="container header-inner">
+<a href="index.html" class="brand"><img src="logo.png" data-dark-logo="logo.png" data-light-logo="logo-light-bg.png" alt="ArtLibrary" class="site-logo"></a>
+<nav class="desktop-nav">
+<a href="index.html#explore">Explore</a>
+<a href="how-to-use.html">How to use</a>
+<a href="about.html">About</a>
+<a href="contact.html">Contact</a>
+</nav>
+<div class="header-actions">
+<button class="theme-button" aria-label="Toggle theme">&#9788;</button>
+<a href="account.html" class="back-home">&larr; Account</a>
+<button class="menu-button" aria-label="Open menu">&#9776;</button>
+</div>
+</div>
+</header>
+<main class="artwork-page">
+<div class="container info-page auth-page account-page-wide">
+<div id="upload-loading">Loading...</div>
+<div id="upload-card" hidden>
+<h1>Share your artwork</h1>
+<p>Upload an AI image with the prompt behind it. It appears on your public portfolio.</p>
+<form id="upload-form" class="auth-form" novalidate>
+<div class="upload-image-row">
+<img id="upload-preview" class="upload-preview" alt="Preview" hidden>
+<div>
+<input type="file" id="upload-input" accept="image/*" hidden>
+<button class="secondary-button" id="upload-pick" type="button">Choose image</button>
+<p class="auth-note" id="upload-image-note">JPG, PNG or WebP. It is resized and saved as high-quality WebP.</p>
+</div>
+</div>
+<label>Title
+<input name="title" type="text" maxlength="100" required placeholder="e.g. Pharaoh in a space suit">
+</label>
+<label>Prompt
+<textarea name="prompt" rows="4" maxlength="4000" required placeholder="The exact prompt you used"></textarea>
+</label>
+<label>AI model
+<input name="model" type="text" maxlength="60" list="model-list" placeholder="e.g. Midjourney, DALL-E, Gemini">
+<datalist id="model-list">
+<option value="Midjourney"></option>
+<option value="DALL-E / ChatGPT"></option>
+<option value="Gemini (Nano Banana)"></option>
+<option value="Stable Diffusion"></option>
+<option value="Flux"></option>
+<option value="Ideogram"></option>
+<option value="Leonardo AI"></option>
+</datalist>
+</label>
+<label>Tags (comma separated, up to 10)
+<input name="tags" type="text" placeholder="e.g. portrait, cinematic, egypt">
+</label>
+<label>What can people change? (optional)
+<textarea name="editableHint" rows="2" maxlength="500" placeholder="e.g. Swap the subject or the background city"></textarea>
+</label>
+<label>Project (optional)
+<select name="projectId" id="upload-project"><option value="">No project (shows on its own)</option></select>
+</label>
+<label class="auth-check"><input name="confirmOwnership" type="checkbox" required> This is my own work, made with AI tools.</label>
+<p class="auth-error" id="upload-error" hidden></p>
+<button class="primary-button" type="submit">Publish artwork</button>
+</form>
+</div>
+<div id="upload-done" hidden>
+<h1>Published</h1>
+<p>Your artwork is live on your portfolio.</p>
+<p><a class="primary-button" id="upload-view" href="#">View it</a></p>
+<p class="auth-note"><a href="upload.html">Upload another</a> &middot; <a id="upload-portfolio" href="#">Open your portfolio</a></p>
+</div>
+</div>
+</main>
+<footer class="site-footer">
+<div class="container footer-bottom">
+<span>&copy; 2026 ArtLibrary.ai</span>
+<span><a href="about.html">About</a> &middot; <a href="how-to-use.html">How to use</a> &middot; <a href="contact.html">Contact</a></span>
+</div>
+</footer>
+<script src="script.js"></script>
+<script src="community.js"></script>
+</body>
+</html>
