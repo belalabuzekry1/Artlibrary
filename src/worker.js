@@ -125,6 +125,7 @@ async function handleApi(request, env, url) {
   if (url.pathname === "/api/my/points" && request.method === "GET") return myPoints(request, env);
   if (url.pathname === "/api/notifications/read" && request.method === "POST") return markNotificationsRead(request, env);
   if (url.pathname === "/api/admin/reports" && request.method === "GET") return adminReports(request, env);
+  if (url.pathname === "/api/admin/backfill-categories" && request.method === "POST") return adminBackfillCategories(request, env);
   const publicArtwork = url.pathname.match(/^\/api\/artwork\/([A-Za-z0-9-]+)$/);
   if (publicArtwork && request.method === "GET") return getArtwork(request, env, publicArtwork[1]);
   if (url.pathname === "/api/artworks/recent" && request.method === "GET") return recentArtworks(request, env);
@@ -1183,6 +1184,37 @@ function cleanTags(tags) {
   return out;
 }
 
+
+const CATEGORIES = ["3D Render", "Animals", "Anime", "Architecture", "Cinematic", "Fantasy", "Illustration", "Logo Design", "Nature", "Product", "Realistic", "Sci-Fi"];
+const CATEGORY_KEYWORDS = {
+  "3D Render": ["3d", "render", "octane", "blender", "cinema 4d", "c4d", "unreal engine", "isometric", "claymation", "voxel", "low poly", "ray tracing"],
+  "Animals": ["animal", "cat", "dog", "bird", "lion", "tiger", "wolf", "horse", "wildlife", "pet", "fox", "bear", "owl", "elephant", "safari", "butterfly", "whale"],
+  "Anime": ["anime", "manga", "ghibli", "chibi", "kawaii", "otaku", "cel shading", "cel-shaded", "waifu"],
+  "Architecture": ["architecture", "building", "skyscraper", "interior design", "facade", "bridge", "temple", "mosque", "cathedral", "castle", "villa", "pyramid", "colosseum"],
+  "Cinematic": ["cinematic", "film still", "movie scene", "dramatic lighting", "volumetric", "god-rays", "god rays", "depth of field", "shot on", "35mm", "epic atmosphere"],
+  "Fantasy": ["fantasy", "dragon", "wizard", "magic", "mythical", "fairy", "elven", "sorcerer", "enchanted", "mystical", "floating island", "anubis"],
+  "Illustration": ["illustration", "watercolor", "sketch", "drawing", "ink art", "flat design", "vector art", "storybook", "doodle", "line art", "gouache"],
+  "Logo Design": ["logo", "branding", "brand identity", "emblem", "badge design", "wordmark", "monogram"],
+  "Nature": ["nature", "landscape", "forest", "mountain", "ocean", "sunset", "sunrise", "flower", "garden", "waterfall", "desert", "lake", "aurora", "meadow", "valley"],
+  "Product": ["product", "packaging", "bottle", "mockup", "advertising", "commercial", "studio shot", "sneaker", "perfume", "skincare"],
+  "Realistic": ["realistic", "photorealistic", "hyperrealistic", "photograph", "portrait", "lifelike", "photo of", "hyper-detailed"],
+  "Sci-Fi": ["sci-fi", "scifi", "cyberpunk", "futuristic", "robot", "spaceship", "neon city", "cyborg", "dystopian", "space station", "alien", "mecha"],
+};
+
+function guessCategory(title, prompt, tags) {
+  const text = (" " + [title || "", prompt || "", (tags || []).join(" ")].join(" ").toLowerCase().replace(/[^a-z0-9&\- ]/g, " ") + " ");
+  let best = "";
+  let bestScore = 0;
+  for (const cat of CATEGORIES) {
+    let score = 0;
+    for (const kw of CATEGORY_KEYWORDS[cat]) {
+      if (text.includes(" " + kw + " ") || text.includes(" " + kw + "s ")) score += kw.length > 4 ? 2 : 1;
+    }
+    if (score > bestScore) { bestScore = score; best = cat; }
+  }
+  return best;
+}
+
 function artworkRow(row) {
   return {
     id: row.id,
@@ -1191,6 +1223,7 @@ function artworkRow(row) {
     model: row.model || "",
     tags: row.tags ? row.tags.split(",").filter(Boolean) : [],
     editable_hint: row.editable_hint || "",
+    category: row.category || "",
     image: "/img/" + row.image_key,
     width: row.width,
     height: row.height,
@@ -1239,8 +1272,8 @@ async function createArtwork(request, env) {
   await env.IMAGES.put(key, bytes, { httpMetadata: { contentType: "image/webp" } });
   const now = new Date().toISOString();
   await env.DB.prepare(
-    "INSERT INTO artworks (id, user_id, title, prompt, model, tags, editable_hint, image_key, width, height, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-  ).bind(id, user.id, title, prompt, model, (tags || []).join(","), hint, key, width, height, now).run();
+    "INSERT INTO artworks (id, user_id, title, prompt, model, tags, editable_hint, image_key, width, height, created_at, category) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+  ).bind(id, user.id, title, prompt, model, (tags || []).join(","), hint, key, width, height, now, guessCategory(title, prompt, tags || [])).run();
   if (projectId) {
     await env.DB.prepare("INSERT OR IGNORE INTO project_items (project_id, artwork_id, added_at) VALUES (?, ?, ?)").bind(projectId, id, now).run();
     await env.DB.prepare("UPDATE projects SET cover_artwork_id = COALESCE(cover_artwork_id, ?) WHERE id = ?").bind(id, projectId).run();
@@ -1333,10 +1366,13 @@ async function updateArtwork(request, env, artworkId, action) {
     const model = typeof body.model === "string" ? body.model.replace(/\s+/g, " ").trim().slice(0, MODEL_MAX) : "";
     const hint = typeof body.editableHint === "string" ? body.editableHint.trim().slice(0, HINT_MAX) : "";
     const tags = cleanTags(body.tags);
+    let category = typeof body.category === "string" ? body.category.trim() : "";
+    if (!category) category = guessCategory(title, prompt, tags || []);
+    else if (CATEGORIES.indexOf(category) === -1) return json({ error: "Unknown category." }, 400);
     if (!title) return json({ error: "Give your artwork a title." }, 400);
     if (!prompt) return json({ error: "Add the prompt." }, 400);
-    await env.DB.prepare("UPDATE artworks SET title = ?, prompt = ?, model = ?, tags = ?, editable_hint = ? WHERE id = ?")
-      .bind(title, prompt, model, (tags || []).join(","), hint, artworkId).run();
+    await env.DB.prepare("UPDATE artworks SET title = ?, prompt = ?, model = ?, tags = ?, editable_hint = ?, category = ? WHERE id = ?")
+      .bind(title, prompt, model, (tags || []).join(","), hint, category, artworkId).run();
     const row = await env.DB.prepare("SELECT * FROM artworks WHERE id = ?").bind(artworkId).first();
     return json({ ok: true, artwork: artworkRow(row) });
   }
@@ -1372,7 +1408,7 @@ async function recentArtworks(request, env) {
   const meUser = await getSessionUser(request, env);
   const hideClause = meUser ? " AND a.id NOT IN (SELECT artwork_id FROM artwork_hides WHERE user_id = ?)" : "";
   const stmt = env.DB.prepare(
-    "SELECT a.id, a.title, a.prompt, a.model, a.image_key, a.views, a.created_at, u.handle AS owner_handle, u.name AS owner_name, (SELECT COUNT(*) FROM artwork_likes al WHERE al.artwork_id = a.id) AS likes, (SELECT COUNT(*) FROM artwork_saves sv WHERE sv.artwork_id = a.id) AS saves FROM artworks a JOIN users u ON u.id = a.user_id WHERE a.status = 'active'" + hideClause + " ORDER BY a.created_at DESC LIMIT 12"
+    "SELECT a.id, a.title, a.prompt, a.model, a.category, a.image_key, a.views, a.created_at, u.handle AS owner_handle, u.name AS owner_name, (SELECT COUNT(*) FROM artwork_likes al WHERE al.artwork_id = a.id) AS likes, (SELECT COUNT(*) FROM artwork_saves sv WHERE sv.artwork_id = a.id) AS saves FROM artworks a JOIN users u ON u.id = a.user_id WHERE a.status = 'active'" + hideClause + " ORDER BY a.created_at DESC LIMIT 12"
   );
   const rows = meUser ? await stmt.bind(meUser.id).all() : await stmt.all();
   return json({ artworks: (rows.results || []).map(publicCard) });
@@ -1382,7 +1418,7 @@ async function featuredWorks(request, env) {
   const meUser = await getSessionUser(request, env);
   const hideClause = meUser ? " AND a.id NOT IN (SELECT artwork_id FROM artwork_hides WHERE user_id = ?)" : "";
   const stmt = env.DB.prepare(
-    "SELECT a.id, a.title, a.prompt, a.model, a.image_key, a.views, a.created_at, u.handle AS owner_handle, u.name AS owner_name, (SELECT COUNT(*) FROM artwork_likes al WHERE al.artwork_id = a.id) AS likes, (SELECT COUNT(*) FROM artwork_saves sv WHERE sv.artwork_id = a.id) AS saves FROM artworks a JOIN users u ON u.id = a.user_id WHERE a.status = 'active'" + hideClause + " ORDER BY a.views DESC, a.created_at DESC LIMIT 20"
+    "SELECT a.id, a.title, a.prompt, a.model, a.category, a.image_key, a.views, a.created_at, u.handle AS owner_handle, u.name AS owner_name, (SELECT COUNT(*) FROM artwork_likes al WHERE al.artwork_id = a.id) AS likes, (SELECT COUNT(*) FROM artwork_saves sv WHERE sv.artwork_id = a.id) AS saves FROM artworks a JOIN users u ON u.id = a.user_id WHERE a.status = 'active'" + hideClause + " ORDER BY a.views DESC, a.created_at DESC LIMIT 20"
   );
   const arts = meUser ? await stmt.bind(meUser.id).all() : await stmt.all();
   const pages = await env.DB.prepare("SELECT page, views FROM page_views ORDER BY views DESC LIMIT 40").all();
@@ -1546,6 +1582,18 @@ async function mySaves(request, env) {
   return json({ saves: saves });
 }
 
+async function adminBackfillCategories(request, env) {
+  if (!(await getAdminUser(request, env))) return notFound();
+  const rows = await env.DB.prepare("SELECT id, title, prompt, tags FROM artworks WHERE (category IS NULL OR category = '') AND status = 'active'").all();
+  let n = 0;
+  for (const r of rows.results || []) {
+    const cat = guessCategory(r.title, r.prompt, r.tags ? r.tags.split(",").filter(Boolean) : []);
+    await env.DB.prepare("UPDATE artworks SET category = ? WHERE id = ?").bind(cat, r.id).run();
+    n++;
+  }
+  return json({ ok: true, updated: n });
+}
+
 async function adminReports(request, env) {
   if (!(await getAdminUser(request, env))) return notFound();
   const rows = await env.DB.prepare(
@@ -1597,4 +1645,4 @@ async function getPortfolio(request, env, handle) {
     artworks: (artworks.results || []).map(function (r) { const c = artworkRow(r); c.likes = r.likes || 0; c.saves = r.saves || 0; return c; }),
     projects,
   });
-}
+       }
