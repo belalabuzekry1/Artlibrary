@@ -3575,6 +3575,16 @@ body[data-theme="light"] .danger-button { color: #b3261e; border-color: rgba(210
     font-size: 13.5px;
 }
 
+.notif-ico {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    vertical-align: -3px;
+}
 .notif-bell {
     position: relative;
     background: none;
