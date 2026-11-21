@@ -317,6 +317,10 @@
                 tagsWrap.appendChild(tag);
             });
             document.getElementById("creation-prompt").textContent = a.prompt;
+            if (window.ArtReactions) {
+                var copyBtn = document.getElementById("creation-copy");
+                copyBtn.parentNode.insertBefore(window.ArtReactions.build(a.id), copyBtn);
+            }
             if (a.editable_hint) {
                 document.getElementById("creation-hint").textContent = a.editable_hint;
                 document.getElementById("creation-hint-wrap").hidden = false;
