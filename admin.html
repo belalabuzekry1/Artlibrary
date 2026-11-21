@@ -83,7 +83,7 @@
 <div id="admin-table-wrap" class="admin-table-wrap" hidden>
 <p><input type="search" id="admin-user-search" placeholder="Search by name, username or email" style="width:100%;max-width:420px;padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font:inherit"></p>
 <table class="admin-table">
-<thead><tr><th>Username</th><th>Email</th><th>Signed up</th><th>At signup</th><th>Method</th><th>Email verified</th><th>Status</th><th>Latest sign-in</th><th></th></tr></thead>
+<thead><tr><th>Username</th><th>Email</th><th>Signed up</th><th>At signup</th><th>Method</th><th>Email verified</th><th>Status</th><th>Latest sign-in</th><th>Reports</th><th></th></tr></thead>
 <tbody id="admin-users"></tbody>
 </table>
 </div>
@@ -226,6 +226,7 @@
       row.appendChild(cell(user.last_login_at
         ? dateTime(user.last_login_at) + " · " + place(user.last_login_city, user.last_login_country) + " · " + (user.last_login_device_type || "Unavailable")
         : "No sign-in recorded yet"));
+      row.appendChild(cell(user.report_count ? String(user.report_count) : "-"));
       var actionCell = document.createElement("td");
       if (user.email && user.email.toLowerCase() !== "belalabuzekry@gmail.com") {
         var delBtn = document.createElement("button");
