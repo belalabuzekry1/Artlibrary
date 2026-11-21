@@ -107,6 +107,7 @@ async function handleApi(request, env, url) {
   if (url.pathname === "/api/account/delete" && request.method === "POST") return deleteAccount(request, env);
   if (url.pathname === "/api/admin/users" && request.method === "GET") return adminUsers(request, env);
   if (url.pathname === "/api/admin/users/delete" && request.method === "POST") return adminDeleteUser(request, env);
+  if (url.pathname === "/api/admin/ai-test" && request.method === "GET") return adminAiTest(request, env);
   if (url.pathname === "/api/admin/deletions" && request.method === "GET") return adminDeletions(request, env);
   if (url.pathname === "/api/me" && request.method === "GET") return me(request, env);
   if (url.pathname === "/api/artworks" && request.method === "POST") return createArtwork(request, env);
@@ -272,6 +273,28 @@ function isAdmin(user) {
 
 function notFound() {
   return new Response(null, { status: 404, headers: { "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex, nofollow" } });
+}
+
+async function adminAiTest(request, env) {
+  const admin = await getAdminUser(request, env);
+  if (!admin) return notFound();
+  const u = new URL(request.url);
+  const id = u.searchParams.get("art") || "";
+  const row = await env.DB.prepare("SELECT image_key FROM artworks WHERE id = ?").bind(id).first();
+  if (!row) return json({ error: "no artwork" }, 404);
+  const obj = await env.IMAGES.get(row.image_key);
+  if (!obj) return json({ error: "no image" }, 404);
+  const bytes = new Uint8Array(await obj.arrayBuffer());
+  try {
+    const res = await env.AI.run("@cf/meta/llama-3.2-11b-vision-instruct", {
+      prompt: "<|image|>Look at this AI-generated artwork and choose the single best-fitting category from this exact list: " + CATEGORIES.join(", ") + ". Reply with only the category name, nothing else.",
+      image: Array.from(bytes),
+      max_tokens: 20,
+    });
+    return json({ ok: true, res, size: bytes.length });
+  } catch (e) {
+    return json({ ok: false, error: String(e && e.message || e), size: bytes.length }, 500);
+  }
 }
 
 async function getAdminUser(request, env) {
@@ -1752,4 +1775,4 @@ async function getPortfolio(request, env, handle) {
     artworks: (artworks.results || []).map(function (r) { const c = artworkRow(r); c.likes = r.likes || 0; c.saves = r.saves || 0; return c; }),
     projects,
   });
-     }
+  }
