@@ -348,6 +348,32 @@
             fetch("api/me", { credentials: "same-origin" }).then(function (r) { return r.ok ? r.json() : null; }).then(function (me) {
                 if (!me || !me.user || me.user.handle.toLowerCase() !== (owner.handle || "").toLowerCase()) return;
                 editBtn.hidden = false;
+                var projSelect = document.getElementById("creation-project");
+                if (projSelect) {
+                    fetch("api/my/projects", { credentials: "same-origin" }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+                        var projects = (d && d.projects) || [];
+                        if (!projects.length) return;
+                        projSelect.textContent = "";
+                        var none = document.createElement("option");
+                        none.value = "";
+                        none.textContent = "No project";
+                        projSelect.appendChild(none);
+                        projects.forEach(function (p) {
+                            var o = document.createElement("option");
+                            o.value = p.id;
+                            o.textContent = p.title;
+                            if ((p.artworks || []).some(function (w) { return w.id === a.id; })) o.selected = true;
+                            projSelect.appendChild(o);
+                        });
+                        projSelect.hidden = false;
+                    }).catch(function () { /* keep hidden */ });
+                    projSelect.addEventListener("change", function () {
+                        projSelect.disabled = true;
+                        postJson("api/artworks/" + a.id + "/project", { projectId: projSelect.value }).then(function () {
+                            projSelect.disabled = false;
+                        }).catch(function () { projSelect.disabled = false; });
+                    });
+                }
             }).catch(function () { /* visitor */ });
 
             var combo = document.getElementById("edit-model-combo");
