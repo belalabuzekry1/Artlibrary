@@ -121,6 +121,8 @@ async function handleApi(request, env, url) {
   if (url.pathname === "/api/react-state" && request.method === "GET") return reactState(request, env);
   if (url.pathname === "/api/my/hides" && request.method === "GET") return myHides(request, env);
   if (url.pathname === "/api/my/saves" && request.method === "GET") return mySaves(request, env);
+  if (url.pathname === "/api/notifications" && request.method === "GET") return myNotifications(request, env);
+  if (url.pathname === "/api/notifications/read" && request.method === "POST") return markNotificationsRead(request, env);
   if (url.pathname === "/api/admin/reports" && request.method === "GET") return adminReports(request, env);
   const publicArtwork = url.pathname.match(/^\/api\/artwork\/([A-Za-z0-9-]+)$/);
   if (publicArtwork && request.method === "GET") return getArtwork(request, env, publicArtwork[1]);
@@ -1143,6 +1145,7 @@ async function deleteAccount(request, env) {
   await env.DB.prepare("DELETE FROM project_items WHERE artwork_id IN (SELECT id FROM artworks WHERE user_id = ?) OR project_id IN (SELECT id FROM projects WHERE user_id = ?)").bind(user.id, user.id).run();
   await env.DB.prepare("DELETE FROM projects WHERE user_id = ?").bind(user.id).run();
   await env.DB.prepare("DELETE FROM artworks WHERE user_id = ?").bind(user.id).run();
+  await env.DB.prepare("DELETE FROM notifications WHERE user_id = ? OR actor_id = ?").bind(user.id, user.id).run();
   await env.DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(user.id).run();
   await env.DB.prepare("DELETE FROM email_tokens WHERE user_id = ?").bind(user.id).run();
   await env.DB.prepare("DELETE FROM auth_codes WHERE user_id = ?").bind(user.id).run();
@@ -1420,10 +1423,37 @@ async function reactToArtwork(request, env, artworkId, action) {
   const existing = await env.DB.prepare("SELECT 1 FROM " + table + " WHERE artwork_id = ? AND user_id = ?").bind(targetId, user.id).first();
   if (existing) {
     await env.DB.prepare("DELETE FROM " + table + " WHERE artwork_id = ? AND user_id = ?").bind(targetId, user.id).run();
+    if ((action === "like" || action === "save") && !targetId.startsWith("static:")) {
+      await env.DB.prepare("DELETE FROM notifications WHERE actor_id = ? AND artwork_id = ? AND kind = ?").bind(user.id, targetId, action).run();
+    }
     return json({ ok: true, active: false });
   }
   await env.DB.prepare("INSERT INTO " + table + " (artwork_id, user_id, created_at) VALUES (?, ?, ?)").bind(targetId, user.id, now).run();
+  if ((action === "like" || action === "save") && !targetId.startsWith("static:")) {
+    const art = await env.DB.prepare("SELECT user_id FROM artworks WHERE id = ?").bind(targetId).first();
+    if (art && art.user_id !== user.id) {
+      await env.DB.prepare("INSERT INTO notifications (id, user_id, actor_id, artwork_id, kind, created_at) VALUES (?, ?, ?, ?, ?, ?)")
+        .bind(crypto.randomUUID(), art.user_id, user.id, targetId, action, now).run();
+    }
+  }
   return json({ ok: true, active: true });
+}
+
+async function myNotifications(request, env) {
+  const user = await getSessionUser(request, env);
+  if (!user) return json({ error: "Not signed in" }, 401);
+  const rows = await env.DB.prepare(
+    "SELECT n.id, n.kind, n.created_at, n.artwork_id, a.title AS title, u.handle AS actor_handle, u.name AS actor_name FROM notifications n LEFT JOIN artworks a ON a.id = n.artwork_id LEFT JOIN users u ON u.id = n.actor_id WHERE n.user_id = ? ORDER BY n.created_at DESC LIMIT 30"
+  ).bind(user.id).all();
+  const unread = await env.DB.prepare("SELECT COUNT(*) AS n FROM notifications WHERE user_id = ? AND read_at IS NULL").bind(user.id).first();
+  return json({ notifications: rows.results || [], unread: (unread && unread.n) || 0 });
+}
+
+async function markNotificationsRead(request, env) {
+  const user = await getSessionUser(request, env);
+  if (!user) return json({ error: "Not signed in" }, 401);
+  await env.DB.prepare("UPDATE notifications SET read_at = ? WHERE user_id = ? AND read_at IS NULL").bind(new Date().toISOString(), user.id).run();
+  return json({ ok: true });
 }
 
 async function reactState(request, env) {
@@ -1515,4 +1545,4 @@ async function getPortfolio(request, env, handle) {
     artworks: (artworks.results || []).map(function (r) { const c = artworkRow(r); c.likes = r.likes || 0; c.saves = r.saves || 0; return c; }),
     projects,
   });
-                      }
+}
