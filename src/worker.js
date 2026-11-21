@@ -287,21 +287,22 @@ async function adminAiTest(request, env) {
   if (!obj) return json({ error: "no image" }, 404);
   const img = Array.from(new Uint8Array(await obj.arrayBuffer()));
   const Q = "Look at this AI-generated artwork and choose the single best-fitting category from this exact list: " + CATEGORIES.join(", ") + ". Reply with only the category name, nothing else.";
-  const bytes = new Uint8Array(img);
   const out = {};
-  const tries = {
-    v7_no_tag: ["@cf/meta/llama-3.2-11b-vision-instruct", { prompt: Q, image: img, max_tokens: 20 }],
-    v8_typed_array: ["@cf/meta/llama-3.2-11b-vision-instruct", { prompt: "<|image|>" + Q, image: bytes, max_tokens: 20 }],
-    v9_b64: ["@cf/meta/llama-3.2-11b-vision-instruct", { prompt: "<|image|>" + Q, image: btoa(String.fromCharCode.apply(null, img)), max_tokens: 20 }],
-  };
-  for (const [k, [m, inp]] of Object.entries(tries)) {
-    try {
-      const r = await env.AI.run(m, inp);
-      out[k] = { ok: true, res: r };
-    } catch (e) {
-      out[k] = { ok: false, error: String(e && e.message || e) };
-    }
-  }
+  const M = "@cf/meta/llama-3.2-11b-vision-instruct";
+  try {
+    const r = await env.AI.run(M, { prompt: Q, image: img, max_tokens: 20 });
+    out.v7_no_tag = { ok: true, res: r };
+  } catch (e) { out.v7_no_tag = { ok: false, error: String(e && e.message || e) }; }
+  try {
+    const r = await env.AI.run(M, { prompt: "<|image|>" + Q, image: new Uint8Array(img), max_tokens: 20 });
+    out.v8_typed_array = { ok: true, res: r };
+  } catch (e) { out.v8_typed_array = { ok: false, error: String(e && e.message || e) }; }
+  try {
+    let bin = "";
+    for (let p = 0; p < img.length; p += 8192) bin += String.fromCharCode.apply(null, img.slice(p, p + 8192));
+    const r = await env.AI.run(M, { prompt: "<|image|>" + Q, image: btoa(bin), max_tokens: 20 });
+    out.v9_b64 = { ok: true, res: r };
+  } catch (e) { out.v9_b64 = { ok: false, error: String(e && e.message || e) }; }
   return json(out);
 }
 
@@ -1785,4 +1786,4 @@ async function getPortfolio(request, env, handle) {
     artworks: (artworks.results || []).map(function (r) { const c = artworkRow(r); c.likes = r.likes || 0; c.saves = r.saves || 0; return c; }),
     projects,
   });
-                      }
+                           }
