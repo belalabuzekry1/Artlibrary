@@ -27,6 +27,20 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (url.pathname !== "/admin.html" && !url.pathname.startsWith("/api/")) {
+      if (url.pathname.startsWith("/img/")) return serveImage(request, env, url);
+      // Public portfolio pages live at artlibrary.ai/<username>.
+      const handleMatch = url.pathname.match(/^\/([a-z0-9_-]{3,24})\/?$/);
+      if (handleMatch && !RESERVED_USERNAMES.has(handleMatch[1])) {
+        const user = await env.DB.prepare("SELECT id FROM users WHERE lower(handle) = ?").bind(handleMatch[1]).first();
+        if (user) {
+          const pageUrl = new URL(request.url);
+          pageUrl.pathname = "/portfolio.html";
+          const res = await env.ASSETS.fetch(new Request(pageUrl.toString(), request));
+          const headers = new Headers(res.headers);
+          headers.set("Cache-Control", "no-store");
+          return new Response(res.body, { status: res.status, headers });
+        }
+      }
       return env.ASSETS.fetch(request);
     }
     try {
@@ -37,6 +51,21 @@ export default {
     }
   },
 };
+
+// Artwork images live in R2 (binding IMAGES, bucket artlibrary-artworks).
+async function serveImage(request, env, url) {
+  if (!env.IMAGES) return new Response("Not found", { status: 404 });
+  const key = decodeURIComponent(url.pathname.slice(5));
+  if (!/^artworks\/[A-Za-z0-9-]+\/[A-Za-z0-9-]+\.webp$/.test(key)) return new Response("Not found", { status: 404 });
+  const object = await env.IMAGES.get(key);
+  if (!object) return new Response("Not found", { status: 404 });
+  return new Response(object.body, {
+    headers: {
+      "Content-Type": "image/webp",
+      "Cache-Control": "public, max-age=31536000, immutable",
+    },
+  });
+}
 
 async function handleApi(request, env, url) {
   // Same-origin only: the site never calls cross-origin, and browsers
@@ -67,6 +96,18 @@ async function handleApi(request, env, url) {
   if (url.pathname === "/api/admin/users" && request.method === "GET") return adminUsers(request, env);
   if (url.pathname === "/api/admin/deletions" && request.method === "GET") return adminDeletions(request, env);
   if (url.pathname === "/api/me" && request.method === "GET") return me(request, env);
+  if (url.pathname === "/api/artworks" && request.method === "POST") return createArtwork(request, env);
+  if (url.pathname === "/api/my/artworks" && request.method === "GET") return myArtworks(request, env);
+  if (url.pathname === "/api/my/projects" && request.method === "GET") return myProjects(request, env);
+  if (url.pathname === "/api/projects" && request.method === "POST") return createProject(request, env);
+  const projectMatch = url.pathname.match(/^\/api\/projects\/([A-Za-z0-9-]+)\/(update|delete)$/);
+  if (projectMatch && request.method === "POST") return updateProject(request, env, projectMatch[1], projectMatch[2]);
+  const artworkMatch = url.pathname.match(/^\/api\/artworks\/([A-Za-z0-9-]+)\/(project|delete)$/);
+  if (artworkMatch && request.method === "POST") return updateArtwork(request, env, artworkMatch[1], artworkMatch[2]);
+  const publicArtwork = url.pathname.match(/^\/api\/artwork\/([A-Za-z0-9-]+)$/);
+  if (publicArtwork && request.method === "GET") return getArtwork(request, env, publicArtwork[1]);
+  const portfolioMatch = url.pathname.match(/^\/api\/u\/([a-z0-9_-]{3,24})$/);
+  if (portfolioMatch && request.method === "GET") return getPortfolio(request, env, portfolioMatch[1]);
   return json({ error: "Not found" }, 404);
 }
 
@@ -1082,4 +1123,214 @@ async function adminDeletions(request, env) {
   if (!(await getAdminUser(request, env))) return notFound();
   const result = await env.DB.prepare("SELECT username, email, mode, period, reason, created_at FROM deletion_feedback ORDER BY created_at DESC LIMIT 100").all();
   return json({ deletions: result.results || [] }, 200, { "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex, nofollow" });
+}
+
+/* ---------------- community: uploads, projects, portfolios ---------------- */
+
+const ARTWORK_IMAGE_MAX_CHARS = 5200000; // ~3.8MB base64 webp after client resize
+const ARTWORKS_PER_DAY = 30;
+const TITLE_MAX = 100;
+const PROMPT_MAX = 4000;
+const MODEL_MAX = 60;
+const TAG_MAX = 30;
+const TAGS_MAX = 10;
+const HINT_MAX = 500;
+
+function cleanTags(tags) {
+  if (!Array.isArray(tags)) return null;
+  const out = [];
+  for (const t of tags) {
+    if (typeof t !== "string") continue;
+    const v = t.replace(/\s+/g, " ").trim().toLowerCase();
+    if (v && v.length <= TAG_MAX && !out.includes(v)) out.push(v);
+    if (out.length >= TAGS_MAX) break;
+  }
+  return out;
+}
+
+function artworkRow(row) {
+  return {
+    id: row.id,
+    title: row.title,
+    prompt: row.prompt,
+    model: row.model || "",
+    tags: row.tags ? row.tags.split(",").filter(Boolean) : [],
+    editable_hint: row.editable_hint || "",
+    image: "/img/" + row.image_key,
+    width: row.width,
+    height: row.height,
+    views: row.views || 0,
+    created_at: row.created_at,
+  };
+}
+
+async function createArtwork(request, env) {
+  const user = await getSessionUser(request, env);
+  if (!user) return json({ error: "Please sign in first." }, 401);
+  if (!user.email_verified_at) return json({ error: "Confirm your email before uploading. Use the resend button on your account page." }, 403);
+  if (!env.IMAGES) return json({ error: "Uploads are not enabled yet. Please try again soon." }, 503);
+  const dayAgo = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+  const recent = await env.DB.prepare("SELECT COUNT(*) AS n FROM artworks WHERE user_id = ? AND created_at > ?").bind(user.id, dayAgo).first();
+  if ((recent && recent.n) >= ARTWORKS_PER_DAY) {
+    return json({ error: `You can upload up to ${ARTWORKS_PER_DAY} artworks a day. Try again tomorrow.` }, 429);
+  }
+  const body = await readJson(request, 6000000);
+  if (!body) return json({ error: "The image is too large. Please choose a smaller one." }, 400);
+  const title = typeof body.title === "string" ? body.title.replace(/\s+/g, " ").trim().slice(0, TITLE_MAX) : "";
+  const prompt = typeof body.prompt === "string" ? body.prompt.trim().slice(0, PROMPT_MAX) : "";
+  const model = typeof body.model === "string" ? body.model.replace(/\s+/g, " ").trim().slice(0, MODEL_MAX) : "";
+  const hint = typeof body.editableHint === "string" ? body.editableHint.trim().slice(0, HINT_MAX) : "";
+  const tags = cleanTags(body.tags);
+  const image = typeof body.image === "string" ? body.image : "";
+  const width = Number.isInteger(body.width) && body.width > 0 && body.width <= 4096 ? body.width : null;
+  const height = Number.isInteger(body.height) && body.height > 0 && body.height <= 4096 ? body.height : null;
+  if (!title) return json({ error: "Give your artwork a title." }, 400);
+  if (!prompt) return json({ error: "Add the prompt you used." }, 400);
+  if (body.confirmOwnership !== true) return json({ error: "Please confirm the artwork is yours and made with AI." }, 400);
+  if (!/^data:image\/webp;base64,[A-Za-z0-9+/=]+$/.test(image) || image.length > ARTWORK_IMAGE_MAX_CHARS) {
+    return json({ error: "That image could not be used. Please choose a JPG, PNG or WebP image." }, 400);
+  }
+  const bytes = fromB64(image.split(",")[1]);
+  if (bytes.length < 100) return json({ error: "That image could not be used. Please choose a JPG, PNG or WebP image." }, 400);
+
+  let projectId = null;
+  if (typeof body.projectId === "string" && body.projectId) {
+    const project = await env.DB.prepare("SELECT id FROM projects WHERE id = ? AND user_id = ?").bind(body.projectId, user.id).first();
+    if (project) projectId = project.id;
+  }
+
+  const id = crypto.randomUUID();
+  const key = `artworks/${user.id}/${id}.webp`;
+  await env.IMAGES.put(key, bytes, { httpMetadata: { contentType: "image/webp" } });
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    "INSERT INTO artworks (id, user_id, title, prompt, model, tags, editable_hint, image_key, width, height, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+  ).bind(id, user.id, title, prompt, model, (tags || []).join(","), hint, key, width, height, now).run();
+  if (projectId) {
+    await env.DB.prepare("INSERT OR IGNORE INTO project_items (project_id, artwork_id, added_at) VALUES (?, ?, ?)").bind(projectId, id, now).run();
+    await env.DB.prepare("UPDATE projects SET cover_artwork_id = COALESCE(cover_artwork_id, ?) WHERE id = ?").bind(id, projectId).run();
+  }
+  return json({ ok: true, artwork: artworkRow({ id, title, prompt, model, tags: (tags || []).join(","), editable_hint: hint, image_key: key, width, height, views: 0, created_at: now }) }, 201);
+}
+
+async function myArtworks(request, env) {
+  const user = await getSessionUser(request, env);
+  if (!user) return json({ error: "Please sign in first." }, 401);
+  const result = await env.DB.prepare("SELECT * FROM artworks WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC").bind(user.id).all();
+  return json({ artworks: (result.results || []).map(artworkRow) });
+}
+
+async function myProjects(request, env) {
+  const user = await getSessionUser(request, env);
+  if (!user) return json({ error: "Please sign in first." }, 401);
+  return json({ projects: await projectsForUser(env, user.id) });
+}
+
+async function projectsForUser(env, userId) {
+  const projects = await env.DB.prepare("SELECT * FROM projects WHERE user_id = ? ORDER BY created_at DESC").bind(userId).all();
+  const out = [];
+  for (const p of projects.results || []) {
+    const items = await env.DB.prepare(
+      "SELECT a.* FROM project_items pi JOIN artworks a ON a.id = pi.artwork_id WHERE pi.project_id = ? AND a.status = 'active' ORDER BY pi.added_at DESC"
+    ).bind(p.id).all();
+    const rows = items.results || [];
+    let cover = null;
+    const coverRow = rows.find((r) => r.id === p.cover_artwork_id) || rows[0];
+    if (coverRow) cover = "/img/" + coverRow.image_key;
+    out.push({ id: p.id, title: p.title, cover, count: rows.length, artworks: rows.map(artworkRow) });
+  }
+  return out;
+}
+
+async function createProject(request, env) {
+  const user = await getSessionUser(request, env);
+  if (!user) return json({ error: "Please sign in first." }, 401);
+  const body = await readJson(request);
+  const title = body && typeof body.title === "string" ? body.title.replace(/\s+/g, " ").trim().slice(0, TITLE_MAX) : "";
+  if (!title) return json({ error: "Give the project a title." }, 400);
+  const count = await env.DB.prepare("SELECT COUNT(*) AS n FROM projects WHERE user_id = ?").bind(user.id).first();
+  if ((count && count.n) >= 50) return json({ error: "You can have up to 50 projects." }, 400);
+  const id = crypto.randomUUID();
+  await env.DB.prepare("INSERT INTO projects (id, user_id, title, created_at) VALUES (?, ?, ?, ?)").bind(id, user.id, title, new Date().toISOString()).run();
+  return json({ ok: true, project: { id, title, cover: null, count: 0, artworks: [] } }, 201);
+}
+
+async function updateProject(request, env, projectId, action) {
+  const user = await getSessionUser(request, env);
+  if (!user) return json({ error: "Please sign in first." }, 401);
+  const project = await env.DB.prepare("SELECT id FROM projects WHERE id = ? AND user_id = ?").bind(projectId, user.id).first();
+  if (!project) return json({ error: "Project not found." }, 404);
+  if (action === "delete") {
+    await env.DB.prepare("DELETE FROM project_items WHERE project_id = ?").bind(projectId).run();
+    await env.DB.prepare("DELETE FROM projects WHERE id = ?").bind(projectId).run();
+    return json({ ok: true });
+  }
+  const body = await readJson(request);
+  const title = body && typeof body.title === "string" ? body.title.replace(/\s+/g, " ").trim().slice(0, TITLE_MAX) : null;
+  if (title) await env.DB.prepare("UPDATE projects SET title = ? WHERE id = ?").bind(title, projectId).run();
+  if (body && typeof body.coverArtworkId === "string" && body.coverArtworkId) {
+    const item = await env.DB.prepare("SELECT artwork_id FROM project_items WHERE project_id = ? AND artwork_id = ?").bind(projectId, body.coverArtworkId).first();
+    if (item) await env.DB.prepare("UPDATE projects SET cover_artwork_id = ? WHERE id = ?").bind(body.coverArtworkId, projectId).run();
+  }
+  return json({ ok: true });
+}
+
+async function updateArtwork(request, env, artworkId, action) {
+  const user = await getSessionUser(request, env);
+  if (!user) return json({ error: "Please sign in first." }, 401);
+  const artwork = await env.DB.prepare("SELECT * FROM artworks WHERE id = ? AND user_id = ?").bind(artworkId, user.id).first();
+  if (!artwork) return json({ error: "Artwork not found." }, 404);
+  if (action === "delete") {
+    await env.DB.prepare("UPDATE artworks SET status = 'removed' WHERE id = ?").bind(artworkId).run();
+    await env.DB.prepare("DELETE FROM project_items WHERE artwork_id = ?").bind(artworkId).run();
+    await env.DB.prepare("UPDATE projects SET cover_artwork_id = NULL WHERE cover_artwork_id = ?").bind(artworkId).run();
+    if (env.IMAGES) {
+      try { await env.IMAGES.delete(artwork.image_key); } catch (err) { /* row is already hidden */ }
+    }
+    return json({ ok: true });
+  }
+  // action === "project": move in/out of a project (one project at a time)
+  const body = await readJson(request);
+  await env.DB.prepare("DELETE FROM project_items WHERE artwork_id = ?").bind(artworkId).run();
+  if (body && typeof body.projectId === "string" && body.projectId) {
+    const project = await env.DB.prepare("SELECT id FROM projects WHERE id = ? AND user_id = ?").bind(body.projectId, user.id).first();
+    if (!project) return json({ error: "Project not found." }, 404);
+    await env.DB.prepare("INSERT OR IGNORE INTO project_items (project_id, artwork_id, added_at) VALUES (?, ?, ?)").bind(project.id, artworkId, new Date().toISOString()).run();
+    await env.DB.prepare("UPDATE projects SET cover_artwork_id = COALESCE(cover_artwork_id, ?) WHERE id = ?").bind(artworkId, project.id).run();
+  }
+  return json({ ok: true });
+}
+
+async function getArtwork(request, env, artworkId) {
+  const row = await env.DB.prepare(
+    "SELECT a.*, u.handle AS owner_handle, u.name AS owner_name, u.avatar_data AS owner_avatar FROM artworks a JOIN users u ON u.id = a.user_id WHERE a.id = ? AND a.status = 'active'"
+  ).bind(artworkId).first();
+  if (!row) return json({ error: "Artwork not found." }, 404);
+  await env.DB.prepare("UPDATE artworks SET views = views + 1 WHERE id = ?").bind(artworkId).run();
+  return json({
+    artwork: { ...artworkRow(row), views: (row.views || 0) + 1 },
+    owner: { handle: row.owner_handle, name: row.owner_name, avatar: row.owner_avatar || null },
+  });
+}
+
+async function getPortfolio(request, env, handle) {
+  const user = await env.DB.prepare(
+    "SELECT id, name, handle, bio, avatar_data, created_at FROM users WHERE lower(handle) = ? AND deactivated_until IS NULL"
+  ).bind(handle).first();
+  if (!user) return json({ error: "Portfolio not found." }, 404);
+  const artworks = await env.DB.prepare(
+    "SELECT * FROM artworks WHERE user_id = ? AND status = 'active' AND id NOT IN (SELECT artwork_id FROM project_items) ORDER BY created_at DESC"
+  ).bind(user.id).all();
+  const projects = await projectsForUser(env, user.id);
+  return json({
+    user: {
+      name: user.name,
+      handle: user.handle,
+      bio: user.bio || "",
+      avatar: user.avatar_data || null,
+      member_since: (user.created_at || "").slice(0, 10),
+    },
+    artworks: (artworks.results || []).map(artworkRow),
+    projects,
+  });
 }
