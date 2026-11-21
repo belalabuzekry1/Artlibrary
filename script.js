@@ -748,18 +748,26 @@
         return bar;
     }
 
+    var EYE_ICON = '<svg class="stat-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12 C6 8, 9 6, 12 6 C15 6, 18 8, 21 12 C18 16, 15 18, 12 18 C9 18, 6 16, 3 12 Z"/><circle cx="12" cy="12" r="2.6" class="stat-ico-dot"/></svg>';
+    var SAVE_ICON = '<svg class="stat-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4 h10 v15.5 L12 16 L7 19.5 Z"/></svg>';
     function cardStats(likes, saves, views) {
         var row = el("div", "card-stats");
         row.appendChild(el("span", "stat stat-likes", "\u2665 " + (likes || 0)));
-        row.appendChild(el("span", "stat stat-saves", "\uD83D\uDD16 " + (saves || 0)));
-        row.appendChild(el("span", "stat stat-views", "\uD83D\uDC41 " + (views || 0)));
+        var sv = el("span", "stat stat-saves");
+        sv.innerHTML = SAVE_ICON + " " + (saves || 0);
+        var vw = el("span", "stat stat-views");
+        vw.innerHTML = EYE_ICON + " " + (views || 0);
+        row.appendChild(sv);
+        row.appendChild(vw);
         return row;
     }
     function thumbStats(likes, views) {
-        return el("span", "latest-stats", "\u2665 " + (likes || 0) + " \u00B7 \uD83D\uDC41 " + (views || 0));
+        var t = el("span", "latest-stats");
+        t.innerHTML = "\u2665 " + (likes || 0) + " \u00B7 " + EYE_ICON + " " + (views || 0);
+        return t;
     }
     window.ArtReactions = { build: buildReactionBar };
-    window.ArtStats = { row: cardStats, thumb: thumbStats };
+    window.ArtStats = { row: cardStats, thumb: thumbStats, EYE_ICON: EYE_ICON, SAVE_ICON: SAVE_ICON };
 
     if (IS_ART_PAGE) initArtworkPage(); else initGallery();
 })();
