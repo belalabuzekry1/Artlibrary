@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Artwork | ArtLibrary</title>
+<meta name="description" content="An AI artwork and its prompt on ArtLibrary.">
+<link rel="icon" href="favicon-32.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="site-header">
+<div class="container header-inner">
+<a href="index.html" class="brand"><img src="logo.png" data-dark-logo="logo.png" data-light-logo="logo-light-bg.png" alt="ArtLibrary" class="site-logo"></a>
+<nav class="desktop-nav">
+<a href="index.html#explore">Explore</a>
+<a href="how-to-use.html">How to use</a>
+<a href="about.html">About</a>
+<a href="contact.html">Contact</a>
+</nav>
+<div class="header-actions">
+<button class="theme-button" aria-label="Toggle theme">&#9788;</button>
+<a href="index.html" class="back-home">&larr; Back</a>
+<button class="menu-button" aria-label="Open menu">&#9776;</button>
+</div>
+</div>
+</header>
+<main class="artwork-page">
+<div class="container creation-page">
+<div id="creation-loading">Loading artwork...</div>
+<div id="creation-card" hidden>
+<div class="creation-layout">
+<div class="creation-image-wrap"><img id="creation-image" alt=""></div>
+<div class="creation-info">
+<h1 id="creation-title"></h1>
+<p class="creation-by">by <a id="creation-owner" href="#"></a> &middot; <span id="creation-views"></span></p>
+<p class="creation-meta" id="creation-model"></p>
+<div class="creation-tags" id="creation-tags"></div>
+<h2>Prompt</h2>
+<div class="prompt-box" id="creation-prompt"></div>
+<button class="primary-button" id="creation-copy" type="button">Copy prompt</button>
+<p class="auth-note" id="creation-copied" hidden>Copied.</p>
+<div id="creation-hint-wrap" hidden>
+<h2>Make it yours</h2>
+<p class="auth-note" id="creation-hint"></p>
+</div>
+</div>
+</div>
+</div>
+<div id="creation-missing" hidden>
+<h1>Artwork not found</h1>
+<p>This artwork does not exist or was removed.</p>
+<p><a class="primary-button" href="index.html">Back to ArtLibrary</a></p>
+</div>
+</div>
+</main>
+<footer class="site-footer">
+<div class="container footer-bottom">
+<span>&copy; 2026 ArtLibrary.ai</span>
+<span><a href="about.html">About</a> &middot; <a href="how-to-use.html">How to use</a> &middot; <a href="contact.html">Contact</a></span>
+</div>
+</footer>
+<script src="script.js"></script>
+<script src="community.js"></script>
+</body>
+</html>
