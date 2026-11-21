@@ -34,14 +34,15 @@
         // Keep the four main destinations within reach on every mobile page.
         var primaryNav = el("nav", "mobile-primary-nav");
         primaryNav.setAttribute("aria-label", "Main destinations");
-        ["Explore", "Categories", "Models", "Community"].forEach(function (label) {
-            var hash = "#" + label.toLowerCase();
+        [["Explore", "#explore"], ["Categories", "#categories"], ["Models", "#models"], ["Portfolio", "/portfolio"]].forEach(function (item) {
+            var label = item[0];
+            var target = item[1];
             var link = el("a", "", label);
             var homePage = !IS_ART_PAGE && /(?:\/|\/index\.html)$/.test(window.location.pathname);
-            link.href = homePage ? hash : BASE + "index.html" + hash;
+            link.href = target.charAt(0) === "#" ? (homePage ? target : BASE + "index.html" + target) : target;
             primaryNav.appendChild(link);
             nav.querySelectorAll("a").forEach(function (existing) {
-                if (existing.getAttribute("href").split("#")[1] === hash.slice(1)) {
+                if (target.charAt(0) === "#" && existing.getAttribute("href").split("#")[1] === target.slice(1)) {
                     existing.classList.add("primary-menu-link");
                 }
             });
