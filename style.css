@@ -3389,6 +3389,43 @@ body[data-theme="light"] .form-status.is-error { color: #b3261e; }
     box-shadow: 0 0 0 3px rgba(192, 83, 43, 0.18);
 }
 
+.leaderboard {
+    margin: 0 0 18px;
+    padding: 16px 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+}
+
+.leaderboard h3 {
+    margin: 0 0 10px;
+    font-size: 16px;
+}
+
+.leaderboard ol {
+    margin: 0;
+    padding: 0 0 0 20px;
+}
+
+.leaderboard-row {
+    display: list-item;
+    padding: 4px 0;
+}
+
+.leaderboard-name {
+    color: var(--text);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.leaderboard-name:hover { text-decoration: underline; }
+
+.leaderboard-points {
+    margin-left: 8px;
+    font-size: 13px;
+    color: var(--muted);
+}
+
 .creation-category {
     display: inline-block;
     margin-top: 8px;
