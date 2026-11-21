@@ -315,6 +315,8 @@
             ownerLink.href = "/" + owner.handle;
             document.getElementById("creation-views").textContent = a.views + (a.views === 1 ? " view" : " views");
             document.getElementById("creation-model").textContent = a.model ? "Made with " + a.model : "";
+            var catChip = document.getElementById("creation-category");
+            if (catChip && a.category) { catChip.textContent = a.category; catChip.hidden = false; }
             var tagsWrap = document.getElementById("creation-tags");
             (a.tags || []).forEach(function (t) {
                 var tag = document.createElement("span");
@@ -340,6 +342,7 @@
         });
 
         /* Owner-only edit mode: same fields as uploading fresh */
+        var CATEGORY_OPTIONS = ["3D Render", "Animals", "Anime", "Architecture", "Cinematic", "Fantasy", "Illustration", "Logo Design", "Nature", "Product", "Realistic", "Sci-Fi"];
         var MODEL_OPTIONS = ["Midjourney", "DALL-E / ChatGPT", "Gemini (Nano Banana)", "Stable Diffusion", "Flux", "Ideogram", "Leonardo AI", "Adobe Firefly", "Recraft", "Runway", "Instinct"];
         function setupEdit(a, owner) {
             var editBtn = document.getElementById("creation-edit");
@@ -435,10 +438,18 @@
             });
             tagsField.addEventListener("blur", function () { addTag(tagsField.value); tagsField.value = ""; });
 
-            var displayEls = ["creation-title", "creation-model", "creation-tags", "creation-prompt-label", "creation-prompt", "creation-copy", "creation-hint-wrap"];
+            var displayEls = ["creation-title", "creation-model", "creation-tags", "creation-category", "creation-prompt-label", "creation-prompt", "creation-copy", "creation-hint-wrap"];
+            var catSelect = form.elements.category;
+            CATEGORY_OPTIONS.forEach(function (c) {
+                var o = document.createElement("option");
+                o.value = c;
+                o.textContent = c;
+                catSelect.appendChild(o);
+            });
             editBtn.addEventListener("click", function () {
                 form.elements.title.value = a.title || "";
                 modelInput.value = a.model || "";
+                catSelect.value = a.category || "";
                 form.elements.prompt.value = a.prompt || "";
                 form.elements.editableHint.value = a.editable_hint || "";
                 tagChips = (a.tags || []).slice(0, 10);
@@ -452,7 +463,7 @@
                 form.hidden = true;
                 displayEls.forEach(function (id) {
                     var node = document.getElementById(id);
-                    node.hidden = id === "creation-hint-wrap" ? !(a.editable_hint) : false;
+                    node.hidden = id === "creation-hint-wrap" ? !(a.editable_hint) : (id === "creation-category" ? !a.category : false);
                 });
                 editBtn.hidden = false;
             });
@@ -470,6 +481,7 @@
                     model: (modelInput.value || "").trim(),
                     prompt: form.elements.prompt.value || "",
                     editableHint: form.elements.editableHint.value || "",
+                    category: catSelect.value,
                     tags: tagChips.slice(0, 10),
                 }).then(function (res) {
                     saveBtn.disabled = false;
@@ -487,12 +499,14 @@
                             tag.textContent = t;
                             tagsWrap.appendChild(tag);
                         });
+                        var catChip2 = document.getElementById("creation-category");
+                        if (catChip2) { catChip2.textContent = a.category || ""; }
                         document.getElementById("creation-prompt").textContent = a.prompt;
                         document.getElementById("creation-hint").textContent = a.editable_hint || "";
                         form.hidden = true;
                         displayEls.forEach(function (id) {
                             var node = document.getElementById(id);
-                            node.hidden = id === "creation-hint-wrap" ? !a.editable_hint : false;
+                            node.hidden = id === "creation-hint-wrap" ? !a.editable_hint : (id === "creation-category" ? !a.category : false);
                         });
                         editBtn.hidden = false;
                         return;
