@@ -107,6 +107,7 @@ async function handleApi(request, env, url) {
   if (url.pathname === "/api/account/delete" && request.method === "POST") return deleteAccount(request, env);
   if (url.pathname === "/api/admin/users" && request.method === "GET") return adminUsers(request, env);
   if (url.pathname === "/api/admin/users/delete" && request.method === "POST") return adminDeleteUser(request, env);
+  if (url.pathname === "/api/admin/ai-test" && request.method === "GET") return adminAiTest(request, env);
   if (url.pathname === "/api/admin/deletions" && request.method === "GET") return adminDeletions(request, env);
   if (url.pathname === "/api/me" && request.method === "GET") return me(request, env);
   if (url.pathname === "/api/artworks" && request.method === "POST") return createArtwork(request, env);
@@ -272,6 +273,34 @@ function isAdmin(user) {
 
 function notFound() {
   return new Response(null, { status: 404, headers: { "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex, nofollow" } });
+}
+
+async function adminAiTest(request, env) {
+  const admin = await getAdminUser(request, env);
+  if (!admin) return notFound();
+  const u = new URL(request.url);
+  const id = u.searchParams.get("art") || "";
+  const row = await env.DB.prepare("SELECT image_key FROM artworks WHERE id = ? ORDER BY created_at DESC LIMIT 1").bind(id).first();
+  const key = row ? row.image_key : null;
+  if (!key) return json({ error: "no artwork" }, 404);
+  const obj = await env.IMAGES.get(key);
+  if (!obj) return json({ error: "no image" }, 404);
+  const img = Array.from(new Uint8Array(await obj.arrayBuffer()));
+  const Q = "Look at this AI-generated artwork and choose the single best-fitting category from this exact list: " + CATEGORIES.join(", ") + ". Reply with only the category name, nothing else.";
+  const out = {};
+  const tries = {
+    v5_llama_content_array: ["@cf/meta/llama-3.2-11b-vision-instruct", { messages: [{ role: "user", content: [{ type: "text", text: Q }, { type: "image", image: img }] }], max_tokens: 20 }],
+    v6_llava_prompt_image: ["@cf/llava-hf/llava-1.5-7b-hf", { prompt: "<image>\nUSER: " + Q + "\nASSISTANT:", image: img, max_tokens: 20 }],
+  };
+  for (const [k, [m, inp]] of Object.entries(tries)) {
+    try {
+      const r = await env.AI.run(m, inp);
+      out[k] = { ok: true, res: r };
+    } catch (e) {
+      out[k] = { ok: false, error: String(e && e.message || e) };
+    }
+  }
+  return json(out);
 }
 
 async function getAdminUser(request, env) {
@@ -1754,4 +1783,4 @@ async function getPortfolio(request, env, handle) {
     artworks: (artworks.results || []).map(function (r) { const c = artworkRow(r); c.likes = r.likes || 0; c.saves = r.saves || 0; return c; }),
     projects,
   });
-}
+                        }
