@@ -81,7 +81,7 @@
             themeButton.setAttribute("title", label);
             logos.forEach(function (logo) {
                 var src = light ? logo.dataset.lightLogo : logo.dataset.darkLogo;
-                if (src) logo.src = src;
+                if (src) logo.src = src.replace(/logo-light-bg\.png$/, "logo-light.svg").replace(/logo\.png$/, "logo.svg");
             });
         };
         var saved = "dark";
