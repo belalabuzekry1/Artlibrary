@@ -524,9 +524,9 @@
             var navStyles = document.createElement("style");
             navStyles.id = "auth-nav-styles";
             navStyles.textContent = [
-                ".desktop-nav a.auth-nav-link { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 10px 18px; border-radius: 999px; color: #fff; background: var(--gradient); box-shadow: 0 7px 22px rgba(91, 49, 255, 0.28); font-weight: 650; text-decoration: none; white-space: nowrap; transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease; }",
-                ".desktop-nav a.auth-nav-link:hover { color: #fff; transform: translateY(-2px); filter: brightness(1.06); box-shadow: 0 10px 28px rgba(91, 49, 255, 0.36); }",
-                ".desktop-nav a.auth-nav-link:focus-visible { outline: 3px solid rgba(40, 120, 255, 0.55); outline-offset: 3px; }",
+                ".desktop-nav a.auth-nav-link { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 10px 18px; border-radius: 999px; color: #fff; background: var(--gradient); box-shadow: 0 7px 22px rgba(192, 83, 43, 0.30); font-weight: 650; text-decoration: none; white-space: nowrap; transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease; }",
+                ".desktop-nav a.auth-nav-link:hover { color: #fff; transform: translateY(-2px); filter: brightness(1.06); box-shadow: 0 10px 28px rgba(192, 83, 43, 0.38); }",
+                ".desktop-nav a.auth-nav-link:focus-visible { outline: 3px solid rgba(192, 83, 43, 0.55); outline-offset: 3px; }",
                 "body[data-theme=light] .desktop-nav a.auth-nav-link, body[data-theme=light] .desktop-nav a.auth-nav-link:hover { color: #fff; }",
                 "@media (max-width: 760px) {",
                 "  .desktop-nav.mobile-open a.auth-nav-link { display: flex; justify-content: center; min-height: 46px; margin-top: 6px; padding: 13px 16px; color: #fff; }",
