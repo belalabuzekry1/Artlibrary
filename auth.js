@@ -626,6 +626,141 @@
         }).catch(function () { /* signed out or offline: section stays hidden */ });
     })();
 
+    /* ---------- projects: create / rename / delete ---------- */
+    (function () {
+        var list = document.getElementById("projects-list");
+        var createForm = document.getElementById("project-create-form");
+        if (!list || !createForm) return;
+        var status = document.getElementById("projects-status");
+
+        function renderRow(p) {
+            var row = document.createElement("div");
+            row.className = "project-row";
+
+            var img = document.createElement("img");
+            img.loading = "lazy";
+            img.alt = "";
+            img.src = p.cover || "logo.png";
+            row.appendChild(img);
+
+            var meta = document.createElement("div");
+            meta.className = "project-meta";
+            var name = document.createElement("strong");
+            name.textContent = p.title;
+            var count = document.createElement("span");
+            count.textContent = p.count === 1 ? "1 work" : (p.count || 0) + " works";
+            meta.appendChild(name);
+            meta.appendChild(count);
+            row.appendChild(meta);
+
+            var actions = document.createElement("div");
+            actions.className = "project-actions";
+
+            var renameBtn = document.createElement("button");
+            renameBtn.type = "button";
+            renameBtn.className = "secondary-button";
+            renameBtn.textContent = "Rename";
+            renameBtn.addEventListener("click", function () {
+                var input = document.createElement("input");
+                input.type = "text";
+                input.maxLength = 100;
+                input.value = p.title;
+                input.className = "project-rename";
+                var saveBtn = document.createElement("button");
+                saveBtn.type = "button";
+                saveBtn.className = "primary-button";
+                saveBtn.textContent = "Save";
+                row.replaceChild(input, meta);
+                row.replaceChild(saveBtn, renameBtn);
+                input.focus();
+                function finish(ok) {
+                    row.replaceChild(meta, input);
+                    row.replaceChild(renameBtn, saveBtn);
+                    if (ok) name.textContent = input.value.trim() || p.title;
+                }
+                function save() {
+                    var title = input.value.trim();
+                    if (!title || title === p.title) { finish(false); return; }
+                    saveBtn.disabled = true;
+                    postJson("api/projects/" + p.id + "/update", { title: title }).then(function (res) {
+                        saveBtn.disabled = false;
+                        if (res.status >= 200 && res.status < 300) { p.title = title; finish(true); return; }
+                        showStatus(status, res.data.error || "Could not rename the project.", true);
+                        finish(false);
+                    }).catch(function () {
+                        saveBtn.disabled = false;
+                        showStatus(status, "Could not reach the server. Please try again.", true);
+                        finish(false);
+                    });
+                }
+                saveBtn.addEventListener("click", save);
+                input.addEventListener("keydown", function (e) {
+                    if (e.key === "Enter") { e.preventDefault(); save(); }
+                    if (e.key === "Escape") finish(false);
+                });
+            });
+
+            var delBtn = document.createElement("button");
+            delBtn.type = "button";
+            delBtn.className = "secondary-button";
+            delBtn.textContent = "Delete";
+            delBtn.addEventListener("click", function () {
+                if (!window.confirm('Delete project "' + p.title + '"? The artworks stay on your portfolio, only the collection is removed.')) return;
+                delBtn.disabled = true;
+                postJson("api/projects/" + p.id + "/delete", {}).then(function (res) {
+                    if (res.status >= 200 && res.status < 300) { row.remove(); checkEmpty(); return; }
+                    delBtn.disabled = false;
+                    showStatus(status, res.data.error || "Could not delete the project.", true);
+                }).catch(function () {
+                    delBtn.disabled = false;
+                    showStatus(status, "Could not reach the server. Please try again.", true);
+                });
+            });
+
+            actions.appendChild(renameBtn);
+            actions.appendChild(delBtn);
+            row.appendChild(actions);
+            return row;
+        }
+
+        var emptyNote = document.createElement("p");
+        emptyNote.className = "projects-empty";
+        emptyNote.textContent = "No projects yet. Create one above, then add works to it when you upload.";
+        function checkEmpty() {
+            if (!list.querySelector(".project-row")) list.appendChild(emptyNote);
+            else if (emptyNote.parentNode) emptyNote.remove();
+        }
+
+        fetch("api/my/projects", { credentials: "same-origin" }).then(function (r) {
+            return r.ok ? r.json() : null;
+        }).then(function (d) {
+            (d && d.projects ? d.projects : []).forEach(function (p) { list.appendChild(renderRow(p)); });
+            checkEmpty();
+        }).catch(function () { checkEmpty(); });
+
+        createForm.addEventListener("submit", function (e) {
+            e.preventDefault();
+            status.hidden = true;
+            var title = (createForm.elements.title.value || "").trim();
+            if (!title) return;
+            var btn = createForm.querySelector("button[type=submit]");
+            btn.disabled = true;
+            postJson("api/projects", { title: title }).then(function (res) {
+                btn.disabled = false;
+                if (res.status >= 200 && res.status < 300 && res.data.project) {
+                    list.insertBefore(renderRow(res.data.project), list.firstChild);
+                    checkEmpty();
+                    createForm.reset();
+                    return;
+                }
+                showStatus(status, res.data.error || "Could not create the project.", true);
+            }).catch(function () {
+                btn.disabled = false;
+                showStatus(status, "Could not reach the server. Please try again.", true);
+            });
+        });
+    })();
+
     /* ---------- sign out ---------- */
     var out = document.getElementById("signout-button");
     out.addEventListener("click", function () {
