@@ -409,7 +409,7 @@
             });
             tagsField.addEventListener("blur", function () { addTag(tagsField.value); tagsField.value = ""; });
 
-            var displayEls = ["creation-title", "creation-model", "creation-tags", "creation-prompt", "creation-copy", "creation-hint-wrap"];
+            var displayEls = ["creation-title", "creation-model", "creation-tags", "creation-prompt-label", "creation-prompt", "creation-copy", "creation-hint-wrap"];
             editBtn.addEventListener("click", function () {
                 form.elements.title.value = a.title || "";
                 modelInput.value = a.model || "";
