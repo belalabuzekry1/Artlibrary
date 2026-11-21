@@ -48,19 +48,16 @@
 <textarea name="prompt" rows="4" maxlength="4000" required placeholder="The exact prompt you used"></textarea>
 </label>
 <label>AI model
-<input name="model" type="text" maxlength="60" list="model-list" placeholder="e.g. Midjourney, DALL-E, Gemini">
-<datalist id="model-list">
-<option value="Midjourney"></option>
-<option value="DALL-E / ChatGPT"></option>
-<option value="Gemini (Nano Banana)"></option>
-<option value="Stable Diffusion"></option>
-<option value="Flux"></option>
-<option value="Ideogram"></option>
-<option value="Leonardo AI"></option>
-</datalist>
+<div class="combo" id="model-combo">
+<input name="model" type="text" maxlength="60" placeholder="Pick from the list or type your own" autocomplete="off">
+<button type="button" class="combo-toggle" id="model-toggle" aria-label="Show model list">&#9662;</button>
+<div class="combo-list" id="model-listbox" hidden></div>
+</div>
 </label>
-<label>Tags (comma separated, up to 10)
-<input name="tags" type="text" placeholder="e.g. portrait, cinematic, egypt">
+<label>Tags (up to 10, press Enter after each)
+<div class="chips-input" id="tags-chips">
+<input type="text" id="tags-field" maxlength="40" placeholder="e.g. portrait">
+</div>
 </label>
 <label>What can people change? (optional)
 <textarea name="editableHint" rows="2" maxlength="500" placeholder="e.g. Swap the subject or the background city"></textarea>
