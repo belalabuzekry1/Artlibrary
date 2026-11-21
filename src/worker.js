@@ -28,6 +28,12 @@ export default {
     const url = new URL(request.url);
     if (url.pathname !== "/admin.html" && !url.pathname.startsWith("/api/")) {
       if (url.pathname.startsWith("/img/")) return serveImage(request, env, url);
+      // /portfolio opens the signed-in member's own portfolio.
+      if (url.pathname === "/portfolio" || url.pathname === "/portfolio/") {
+        const me = await getSessionUser(request, env);
+        const dest = me ? "/" + me.handle : "/login.html";
+        return Response.redirect(url.origin + dest, 302);
+      }
       // Public portfolio pages live at artlibrary.ai/<username>.
       const handleMatch = url.pathname.match(/^\/([a-z0-9_-]{3,24})\/?$/);
       if (handleMatch && !RESERVED_USERNAMES.has(handleMatch[1])) {
@@ -156,7 +162,7 @@ function cleanName(name) {
 
 const RESERVED_USERNAMES = new Set([
   "www", "api", "admin", "about", "contact", "login", "register",
-  "account", "art", "how-to-use", "explore",
+  "account", "art", "how-to-use", "explore", "portfolio", "upload", "creation", "img",
 ]);
 
 function cleanUsername(username) {
@@ -1349,4 +1355,4 @@ async function getPortfolio(request, env, handle) {
     artworks: (artworks.results || []).map(artworkRow),
     projects,
   });
-}
+                   }
