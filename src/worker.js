@@ -122,6 +122,7 @@ async function handleApi(request, env, url) {
   if (url.pathname === "/api/my/hides" && request.method === "GET") return myHides(request, env);
   if (url.pathname === "/api/my/saves" && request.method === "GET") return mySaves(request, env);
   if (url.pathname === "/api/notifications" && request.method === "GET") return myNotifications(request, env);
+  if (url.pathname === "/api/my/points" && request.method === "GET") return myPoints(request, env);
   if (url.pathname === "/api/notifications/read" && request.method === "POST") return markNotificationsRead(request, env);
   if (url.pathname === "/api/admin/reports" && request.method === "GET") return adminReports(request, env);
   const publicArtwork = url.pathname.match(/^\/api\/artwork\/([A-Za-z0-9-]+)$/);
@@ -1244,6 +1245,7 @@ async function createArtwork(request, env) {
     await env.DB.prepare("INSERT OR IGNORE INTO project_items (project_id, artwork_id, added_at) VALUES (?, ?, ?)").bind(projectId, id, now).run();
     await env.DB.prepare("UPDATE projects SET cover_artwork_id = COALESCE(cover_artwork_id, ?) WHERE id = ?").bind(id, projectId).run();
   }
+  await awardPoints(env, user.id, id, "upload", POINTS_UPLOAD);
   return json({ ok: true, artwork: artworkRow({ id, title, prompt, model, tags: (tags || []).join(","), editable_hint: hint, image_key: key, width, height, views: 0, created_at: now }) }, 201);
 }
 
@@ -1440,6 +1442,10 @@ async function reactToArtwork(request, env, artworkId, action) {
     await env.DB.prepare("DELETE FROM " + table + " WHERE artwork_id = ? AND user_id = ?").bind(targetId, user.id).run();
     if ((action === "like" || action === "save") && !targetId.startsWith("static:")) {
       await env.DB.prepare("DELETE FROM notifications WHERE actor_id = ? AND artwork_id = ? AND kind = ?").bind(user.id, targetId, action).run();
+      const art0 = await env.DB.prepare("SELECT user_id FROM artworks WHERE id = ?").bind(targetId).first();
+      if (art0 && art0.user_id !== user.id) {
+        await awardPoints(env, art0.user_id, targetId, action + "_removed", -(action === "like" ? POINTS_LIKE_RECEIVED : POINTS_SAVE_RECEIVED));
+      }
     }
     return json({ ok: true, active: false });
   }
@@ -1449,9 +1455,40 @@ async function reactToArtwork(request, env, artworkId, action) {
     if (art && art.user_id !== user.id) {
       await env.DB.prepare("INSERT INTO notifications (id, user_id, actor_id, artwork_id, kind, created_at) VALUES (?, ?, ?, ?, ?, ?)")
         .bind(crypto.randomUUID(), art.user_id, user.id, targetId, action, now).run();
+      await awardPoints(env, art.user_id, targetId, action + "_received", action === "like" ? POINTS_LIKE_RECEIVED : POINTS_SAVE_RECEIVED);
     }
   }
   return json({ ok: true, active: true });
+}
+
+const POINTS_DAILY_CAP = 100;
+const POINTS_UPLOAD = 10;
+const POINTS_LIKE_RECEIVED = 2;
+const POINTS_SAVE_RECEIVED = 5;
+
+async function awardPoints(env, userId, artworkId, kind, delta) {
+  const now = new Date().toISOString();
+  const day = now.slice(0, 10);
+  if (delta > 0) {
+    const earned = await env.DB.prepare("SELECT COALESCE(SUM(delta), 0) AS n FROM points_ledger WHERE user_id = ? AND day = ? AND delta > 0").bind(userId, day).first();
+    const soFar = (earned && earned.n) || 0;
+    if (soFar >= POINTS_DAILY_CAP) return;
+    if (soFar + delta > POINTS_DAILY_CAP) delta = POINTS_DAILY_CAP - soFar;
+  }
+  await env.DB.prepare("INSERT INTO points_ledger (id, user_id, artwork_id, kind, delta, day, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
+    .bind(crypto.randomUUID(), userId, artworkId || null, kind, delta, day, now).run();
+}
+
+async function myPoints(request, env) {
+  const user = await getSessionUser(request, env);
+  if (!user) return json({ error: "Not signed in" }, 401);
+  const day = new Date().toISOString().slice(0, 10);
+  const total = await env.DB.prepare("SELECT COALESCE(SUM(delta), 0) AS n FROM points_ledger WHERE user_id = ?").bind(user.id).first();
+  const today = await env.DB.prepare("SELECT COALESCE(SUM(delta), 0) AS n FROM points_ledger WHERE user_id = ? AND day = ? AND delta > 0").bind(user.id, day).first();
+  const recent = await env.DB.prepare(
+    "SELECT pl.kind, pl.delta, pl.created_at, a.title AS title FROM points_ledger pl LEFT JOIN artworks a ON a.id = pl.artwork_id WHERE pl.user_id = ? ORDER BY pl.created_at DESC LIMIT 10"
+  ).bind(user.id).all();
+  return json({ total: (total && total.n) || 0, today: (today && today.n) || 0, cap: POINTS_DAILY_CAP, recent: recent.results || [] });
 }
 
 async function myNotifications(request, env) {
@@ -1560,4 +1597,4 @@ async function getPortfolio(request, env, handle) {
     artworks: (artworks.results || []).map(function (r) { const c = artworkRow(r); c.likes = r.likes || 0; c.saves = r.saves || 0; return c; }),
     projects,
   });
-       }
+}
