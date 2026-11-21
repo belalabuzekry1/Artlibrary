@@ -114,7 +114,7 @@ async function handleApi(request, env, url) {
   if (url.pathname === "/api/projects" && request.method === "POST") return createProject(request, env);
   const projectMatch = url.pathname.match(/^\/api\/projects\/([A-Za-z0-9-]+)\/(update|delete)$/);
   if (projectMatch && request.method === "POST") return updateProject(request, env, projectMatch[1], projectMatch[2]);
-  const artworkMatch = url.pathname.match(/^\/api\/artworks\/([A-Za-z0-9-]+)\/(project|delete)$/);
+  const artworkMatch = url.pathname.match(/^\/api\/artworks\/([A-Za-z0-9-]+)\/(project|delete|update)$/);
   if (artworkMatch && request.method === "POST") return updateArtwork(request, env, artworkMatch[1], artworkMatch[2]);
   const reactMatch = url.pathname.match(/^\/api\/artworks\/([A-Za-z0-9:-]+)\/(like|save|hide|report)$/);
   if (reactMatch && request.method === "POST") return reactToArtwork(request, env, reactMatch[1], reactMatch[2]);
@@ -1323,6 +1323,21 @@ async function updateArtwork(request, env, artworkId, action) {
     }
     return json({ ok: true });
   }
+  if (action === "update") {
+    const body = await readJson(request);
+    if (!body) return json({ error: "Bad request" }, 400);
+    const title = typeof body.title === "string" ? body.title.replace(/\s+/g, " ").trim().slice(0, TITLE_MAX) : "";
+    const prompt = typeof body.prompt === "string" ? body.prompt.trim().slice(0, PROMPT_MAX) : "";
+    const model = typeof body.model === "string" ? body.model.replace(/\s+/g, " ").trim().slice(0, MODEL_MAX) : "";
+    const hint = typeof body.editableHint === "string" ? body.editableHint.trim().slice(0, HINT_MAX) : "";
+    const tags = cleanTags(body.tags);
+    if (!title) return json({ error: "Give your artwork a title." }, 400);
+    if (!prompt) return json({ error: "Add the prompt." }, 400);
+    await env.DB.prepare("UPDATE artworks SET title = ?, prompt = ?, model = ?, tags = ?, editable_hint = ? WHERE id = ?")
+      .bind(title, prompt, model, (tags || []).join(","), hint, artworkId).run();
+    const row = await env.DB.prepare("SELECT * FROM artworks WHERE id = ?").bind(artworkId).first();
+    return json({ ok: true, artwork: artworkRow(row) });
+  }
   // action === "project": move in/out of a project (one project at a time)
   const body = await readJson(request);
   await env.DB.prepare("DELETE FROM project_items WHERE artwork_id = ?").bind(artworkId).run();
@@ -1545,4 +1560,4 @@ async function getPortfolio(request, env, handle) {
     artworks: (artworks.results || []).map(function (r) { const c = artworkRow(r); c.likes = r.likes || 0; c.saves = r.saves || 0; return c; }),
     projects,
   });
-}
+       }
