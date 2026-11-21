@@ -761,6 +761,45 @@
         });
     })();
 
+    /* ---------- points ---------- */
+    (function () {
+        var totalEl = document.getElementById("points-total");
+        if (!totalEl) return;
+        fetch("api/my/points", { credentials: "same-origin" }).then(function (r) {
+            return r.ok ? r.json() : null;
+        }).then(function (d) {
+            if (!d) return;
+            totalEl.textContent = d.total;
+            document.getElementById("points-today").textContent = d.today;
+            document.getElementById("points-cap").textContent = d.cap;
+            var wrap = document.getElementById("points-recent");
+            var labels = {
+                upload: "You published",
+                like_received: "Someone liked",
+                save_received: "Someone saved",
+                like_removed: "A like was removed from",
+                save_removed: "A save was removed from",
+            };
+            (d.recent || []).forEach(function (pt) {
+                var row = document.createElement("div");
+                row.className = "points-row";
+                var delta = document.createElement("span");
+                delta.className = "points-delta" + (pt.delta < 0 ? " neg" : "");
+                delta.textContent = (pt.delta > 0 ? "+" : "") + pt.delta;
+                var what = document.createElement("span");
+                what.className = "points-what";
+                what.textContent = (labels[pt.kind] || pt.kind) + (pt.title ? ' "' + pt.title + '"' : " a work");
+                var when = document.createElement("span");
+                when.className = "points-when";
+                when.textContent = new Date(pt.created_at).toLocaleDateString();
+                row.appendChild(delta);
+                row.appendChild(what);
+                row.appendChild(when);
+                wrap.appendChild(row);
+            });
+        }).catch(function () { /* leave zeros */ });
+    })();
+
     /* ---------- sign out ---------- */
     var out = document.getElementById("signout-button");
     out.addEventListener("click", function () {
