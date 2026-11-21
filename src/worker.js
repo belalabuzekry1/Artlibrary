@@ -116,6 +116,11 @@ async function handleApi(request, env, url) {
   if (projectMatch && request.method === "POST") return updateProject(request, env, projectMatch[1], projectMatch[2]);
   const artworkMatch = url.pathname.match(/^\/api\/artworks\/([A-Za-z0-9-]+)\/(project|delete)$/);
   if (artworkMatch && request.method === "POST") return updateArtwork(request, env, artworkMatch[1], artworkMatch[2]);
+  const reactMatch = url.pathname.match(/^\/api\/artworks\/([A-Za-z0-9:-]+)\/(like|save|hide|report)$/);
+  if (reactMatch && request.method === "POST") return reactToArtwork(request, env, reactMatch[1], reactMatch[2]);
+  if (url.pathname === "/api/react-state" && request.method === "GET") return reactState(request, env);
+  if (url.pathname === "/api/my/hides" && request.method === "GET") return myHides(request, env);
+  if (url.pathname === "/api/admin/reports" && request.method === "GET") return adminReports(request, env);
   const publicArtwork = url.pathname.match(/^\/api\/artwork\/([A-Za-z0-9-]+)$/);
   if (publicArtwork && request.method === "GET") return getArtwork(request, env, publicArtwork[1]);
   if (url.pathname === "/api/artworks/recent" && request.method === "GET") return recentArtworks(request, env);
@@ -1341,16 +1346,22 @@ function publicCard(row) {
 }
 
 async function recentArtworks(request, env) {
-  const rows = await env.DB.prepare(
-    "SELECT a.id, a.title, a.prompt, a.model, a.image_key, a.views, a.created_at, u.handle AS owner_handle, u.name AS owner_name FROM artworks a JOIN users u ON u.id = a.user_id WHERE a.status = 'active' ORDER BY a.created_at DESC LIMIT 12"
-  ).all();
+  const meUser = await getSessionUser(request, env);
+  const hideClause = meUser ? " AND a.id NOT IN (SELECT artwork_id FROM artwork_hides WHERE user_id = ?)" : "";
+  const stmt = env.DB.prepare(
+    "SELECT a.id, a.title, a.prompt, a.model, a.image_key, a.views, a.created_at, u.handle AS owner_handle, u.name AS owner_name FROM artworks a JOIN users u ON u.id = a.user_id WHERE a.status = 'active'" + hideClause + " ORDER BY a.created_at DESC LIMIT 12"
+  );
+  const rows = meUser ? await stmt.bind(meUser.id).all() : await stmt.all();
   return json({ artworks: (rows.results || []).map(publicCard) });
 }
 
 async function featuredWorks(request, env) {
-  const arts = await env.DB.prepare(
-    "SELECT a.id, a.title, a.prompt, a.model, a.image_key, a.views, a.created_at, u.handle AS owner_handle, u.name AS owner_name FROM artworks a JOIN users u ON u.id = a.user_id WHERE a.status = 'active' ORDER BY a.views DESC, a.created_at DESC LIMIT 20"
-  ).all();
+  const meUser = await getSessionUser(request, env);
+  const hideClause = meUser ? " AND a.id NOT IN (SELECT artwork_id FROM artwork_hides WHERE user_id = ?)" : "";
+  const stmt = env.DB.prepare(
+    "SELECT a.id, a.title, a.prompt, a.model, a.image_key, a.views, a.created_at, u.handle AS owner_handle, u.name AS owner_name FROM artworks a JOIN users u ON u.id = a.user_id WHERE a.status = 'active'" + hideClause + " ORDER BY a.views DESC, a.created_at DESC LIMIT 20"
+  );
+  const arts = meUser ? await stmt.bind(meUser.id).all() : await stmt.all();
   const pages = await env.DB.prepare("SELECT page, views FROM page_views ORDER BY views DESC LIMIT 40").all();
   return json({ artworks: (arts.results || []).map(publicCard), pages: (pages.results || []) });
 }
@@ -1364,15 +1375,101 @@ async function trackPageView(request, env) {
   return json({ ok: true });
 }
 
+async function resolveReactionTarget(env, artworkId) {
+  if (artworkId.startsWith("static:")) {
+    const slug = artworkId.slice(7);
+    return /^[a-z0-9][a-z0-9-]{1,58}[a-z0-9]$/.test(slug) ? artworkId : null;
+  }
+  const art = await env.DB.prepare("SELECT id FROM artworks WHERE id = ? AND status = 'active'").bind(artworkId).first();
+  return art ? artworkId : null;
+}
+
+async function reactToArtwork(request, env, artworkId, action) {
+  const user = await getSessionUser(request, env);
+  if (!user) return json({ error: "Sign in first." }, 401);
+  const targetId = await resolveReactionTarget(env, artworkId);
+  if (!targetId) return json({ error: "Artwork not found." }, 404);
+  const now = new Date().toISOString();
+  if (action === "report") {
+    let body;
+    try { body = await request.json(); } catch (e) { body = {}; }
+    const reason = body && typeof body.reason === "string" ? body.reason : "";
+    if (["nudity", "sexual", "racism", "bullying", "other"].indexOf(reason) === -1) return json({ error: "Choose a reason." }, 400);
+    const details = body && typeof body.details === "string" ? body.details.trim().slice(0, 1000) : "";
+    if (reason === "other" && !details) return json({ error: "Please describe the problem." }, 400);
+    const id = crypto.randomUUID();
+    await env.DB.prepare("INSERT INTO artwork_reports (id, artwork_id, user_id, reason, details, created_at) VALUES (?, ?, ?, ?, ?, ?)")
+      .bind(id, targetId, user.id, reason, details, now).run();
+    // Reported works stay visible - Belal reviews them from the dashboard and this email.
+    try {
+      await sendEmail(env, ADMIN_EMAIL, "ArtLibrary report: " + reason,
+        "A work was reported.\n\nWork: " + targetId + "\nReason: " + reason + "\nDetails: " + (details || "-") + "\nReporter: " + user.handle + " (" + user.id + ")\nTime: " + now + "\n\nReview it from the reports section in admin.html.");
+    } catch (e) { /* the report row is saved either way */ }
+    return json({ ok: true });
+  }
+  const table = action === "like" ? "artwork_likes" : action === "save" ? "artwork_saves" : "artwork_hides";
+  const existing = await env.DB.prepare("SELECT 1 FROM " + table + " WHERE artwork_id = ? AND user_id = ?").bind(targetId, user.id).first();
+  if (existing) {
+    await env.DB.prepare("DELETE FROM " + table + " WHERE artwork_id = ? AND user_id = ?").bind(targetId, user.id).run();
+    return json({ ok: true, active: false });
+  }
+  await env.DB.prepare("INSERT INTO " + table + " (artwork_id, user_id, created_at) VALUES (?, ?, ?)").bind(targetId, user.id, now).run();
+  return json({ ok: true, active: true });
+}
+
+async function reactState(request, env) {
+  const url = new URL(request.url);
+  const raw = url.searchParams.get("id") || "";
+  const targetId = await resolveReactionTarget(env, raw);
+  if (!targetId) return json({ error: "Artwork not found." }, 404);
+  const likes = await env.DB.prepare("SELECT COUNT(*) AS n FROM artwork_likes WHERE artwork_id = ?").bind(targetId).first();
+  const saves = await env.DB.prepare("SELECT COUNT(*) AS n FROM artwork_saves WHERE artwork_id = ?").bind(targetId).first();
+  let my = null;
+  const user = await getSessionUser(request, env);
+  if (user) {
+    const liked = await env.DB.prepare("SELECT 1 FROM artwork_likes WHERE artwork_id = ? AND user_id = ?").bind(targetId, user.id).first();
+    const saved = await env.DB.prepare("SELECT 1 FROM artwork_saves WHERE artwork_id = ? AND user_id = ?").bind(targetId, user.id).first();
+    const hidden = await env.DB.prepare("SELECT 1 FROM artwork_hides WHERE artwork_id = ? AND user_id = ?").bind(targetId, user.id).first();
+    my = { liked: !!liked, saved: !!saved, hidden: !!hidden };
+  }
+  return json({ likes: (likes && likes.n) || 0, saves: (saves && saves.n) || 0, my });
+}
+
+async function myHides(request, env) {
+  const user = await getSessionUser(request, env);
+  if (!user) return json({ error: "Not signed in" }, 401);
+  const rows = await env.DB.prepare("SELECT artwork_id FROM artwork_hides WHERE user_id = ?").bind(user.id).all();
+  return json({ hides: (rows.results || []).map(function (r) { return r.artwork_id; }) });
+}
+
+async function adminReports(request, env) {
+  if (!(await getAdminUser(request, env))) return notFound();
+  const rows = await env.DB.prepare(
+    "SELECT r.id, r.artwork_id, r.reason, r.details, r.created_at, u.handle AS reporter, a.title AS title FROM artwork_reports r LEFT JOIN users u ON u.id = r.user_id LEFT JOIN artworks a ON a.id = r.artwork_id ORDER BY r.created_at DESC LIMIT 200"
+  ).all();
+  return json({ reports: rows.results || [] }, 200, { "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex, nofollow" });
+}
+
 async function getArtwork(request, env, artworkId) {
   const row = await env.DB.prepare(
     "SELECT a.*, u.handle AS owner_handle, u.name AS owner_name, u.avatar_data AS owner_avatar FROM artworks a JOIN users u ON u.id = a.user_id WHERE a.id = ? AND a.status = 'active'"
   ).bind(artworkId).first();
   if (!row) return json({ error: "Artwork not found." }, 404);
   await env.DB.prepare("UPDATE artworks SET views = views + 1 WHERE id = ?").bind(artworkId).run();
+  const likes = await env.DB.prepare("SELECT COUNT(*) AS n FROM artwork_likes WHERE artwork_id = ?").bind(artworkId).first();
+  const saves = await env.DB.prepare("SELECT COUNT(*) AS n FROM artwork_saves WHERE artwork_id = ?").bind(artworkId).first();
+  let my = null;
+  const meUser = await getSessionUser(request, env);
+  if (meUser) {
+    const liked = await env.DB.prepare("SELECT 1 FROM artwork_likes WHERE artwork_id = ? AND user_id = ?").bind(artworkId, meUser.id).first();
+    const saved = await env.DB.prepare("SELECT 1 FROM artwork_saves WHERE artwork_id = ? AND user_id = ?").bind(artworkId, meUser.id).first();
+    const hidden = await env.DB.prepare("SELECT 1 FROM artwork_hides WHERE artwork_id = ? AND user_id = ?").bind(artworkId, meUser.id).first();
+    my = { liked: !!liked, saved: !!saved, hidden: !!hidden };
+  }
   return json({
-    artwork: { ...artworkRow(row), views: (row.views || 0) + 1 },
+    artwork: { ...artworkRow(row), views: (row.views || 0) + 1, likes: (likes && likes.n) || 0, saves: (saves && saves.n) || 0 },
     owner: { handle: row.owner_handle, name: row.owner_name, avatar: row.owner_avatar || null },
+    my,
   });
 }
 
@@ -1396,4 +1493,4 @@ async function getPortfolio(request, env, handle) {
     artworks: (artworks.results || []).map(artworkRow),
     projects,
   });
-}
+              }
