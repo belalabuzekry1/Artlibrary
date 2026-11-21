@@ -3389,6 +3389,17 @@ body[data-theme="light"] .form-status.is-error { color: #b3261e; }
     box-shadow: 0 0 0 3px rgba(192, 83, 43, 0.18);
 }
 
+.creation-category {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 3px 12px;
+    border-radius: 999px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--muted);
+}
+
 .edit-actions {
     display: flex;
     gap: 10px;
