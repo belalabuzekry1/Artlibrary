@@ -107,6 +107,7 @@ async function handleApi(request, env, url) {
   if (url.pathname === "/api/account/delete" && request.method === "POST") return deleteAccount(request, env);
   if (url.pathname === "/api/admin/users" && request.method === "GET") return adminUsers(request, env);
   if (url.pathname === "/api/admin/users/delete" && request.method === "POST") return adminDeleteUser(request, env);
+  if (url.pathname === "/api/admin/ai-agree" && request.method === "GET") return adminAiAgree(request, env);
   if (url.pathname === "/api/admin/deletions" && request.method === "GET") return adminDeletions(request, env);
   if (url.pathname === "/api/me" && request.method === "GET") return me(request, env);
   if (url.pathname === "/api/artworks" && request.method === "POST") return createArtwork(request, env);
@@ -272,6 +273,18 @@ function isAdmin(user) {
 
 function notFound() {
   return new Response(null, { status: 404, headers: { "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex, nofollow" } });
+}
+
+async function adminAiAgree(request, env) {
+  const admin = await getAdminUser(request, env);
+  if (!admin) return notFound();
+  if (!env.AI) return jsonResponse({ ok: false, error: "no AI binding" }, 500);
+  try {
+    const res = await env.AI.run("@cf/meta/llama-3.2-11b-vision-instruct", { prompt: "agree" });
+    return jsonResponse({ ok: true, res });
+  } catch (e) {
+    return jsonResponse({ ok: false, error: String(e && e.message || e) }, 500);
+  }
 }
 
 async function getAdminUser(request, env) {
@@ -1752,4 +1765,4 @@ async function getPortfolio(request, env, handle) {
     artworks: (artworks.results || []).map(function (r) { const c = artworkRow(r); c.likes = r.likes || 0; c.saves = r.saves || 0; return c; }),
     projects,
   });
-                                                                              }
+                }
