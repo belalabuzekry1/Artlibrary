@@ -2769,6 +2769,21 @@ body[data-theme="light"] .related-card { background: #fffdf7; color: #221c14; bo
 body[data-theme="light"] .customize-link { color: #a84b26; }
 body[data-theme="light"] .model-pill.is-active { color: #221c14; }
 
+body[data-theme="light"] .model-pill {
+    color: #4a3f30;
+    background: #fffdf7;
+    border-color: rgba(74, 56, 36, 0.22);
+}
+body[data-theme="light"] .model-pill:hover {
+    background: rgba(192, 83, 43, 0.10);
+    border-color: rgba(192, 83, 43, 0.45);
+}
+body[data-theme="light"] .model-pill.is-empty {
+    opacity: 1;
+    color: #6e6353;
+    background: transparent;
+}
+
 /* light theme: artwork page fixes */
 body[data-theme="light"] .prompt-box { background: #fffdf7; border-color: rgba(74,56,36,.14); box-shadow: 0 10px 30px rgba(74,56,36,.08); }
 body[data-theme="light"] .prompt-header h2 { color: #221c14; }
