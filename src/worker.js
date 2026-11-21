@@ -126,6 +126,8 @@ async function handleApi(request, env, url) {
   if (url.pathname === "/api/notifications/read" && request.method === "POST") return markNotificationsRead(request, env);
   if (url.pathname === "/api/admin/reports" && request.method === "GET") return adminReports(request, env);
   if (url.pathname === "/api/admin/backfill-categories" && request.method === "POST") return adminBackfillCategories(request, env);
+  const adminArtworkMatch = url.pathname.match(/^\/api\/admin\/artworks\/([A-Za-z0-9-]+)\/delete$/);
+  if (adminArtworkMatch && request.method === "POST") return adminDeleteArtwork(request, env, adminArtworkMatch[1]);
   const publicArtwork = url.pathname.match(/^\/api\/artwork\/([A-Za-z0-9-]+)$/);
   if (publicArtwork && request.method === "GET") return getArtwork(request, env, publicArtwork[1]);
   if (url.pathname === "/api/artworks/recent" && request.method === "GET") return recentArtworks(request, env);
@@ -1618,6 +1620,24 @@ async function mySaves(request, env) {
   return json({ saves: saves });
 }
 
+async function adminDeleteArtwork(request, env, artworkId) {
+  if (!(await getAdminUser(request, env))) return notFound();
+  const artwork = await env.DB.prepare("SELECT * FROM artworks WHERE id = ?").bind(artworkId).first();
+  if (!artwork) return json({ error: "Artwork not found." }, 404);
+  await env.DB.prepare("UPDATE artworks SET status = 'removed' WHERE id = ?").bind(artworkId).run();
+  await env.DB.prepare("DELETE FROM project_items WHERE artwork_id = ?").bind(artworkId).run();
+  await env.DB.prepare("UPDATE projects SET cover_artwork_id = NULL WHERE cover_artwork_id = ?").bind(artworkId).run();
+  await env.DB.prepare("DELETE FROM artwork_likes WHERE artwork_id = ?").bind(artworkId).run();
+  await env.DB.prepare("DELETE FROM artwork_saves WHERE artwork_id = ?").bind(artworkId).run();
+  await env.DB.prepare("DELETE FROM artwork_hides WHERE artwork_id = ?").bind(artworkId).run();
+  await env.DB.prepare("DELETE FROM artwork_reports WHERE artwork_id = ?").bind(artworkId).run();
+  await env.DB.prepare("DELETE FROM notifications WHERE artwork_id = ?").bind(artworkId).run();
+  if (env.IMAGES) {
+    try { await env.IMAGES.delete(artwork.image_key); } catch (err) { /* row is already hidden */ }
+  }
+  return json({ ok: true });
+}
+
 async function adminBackfillCategories(request, env) {
   if (!(await getAdminUser(request, env))) return notFound();
   const rows = await env.DB.prepare("SELECT id, title, prompt, tags FROM artworks WHERE (category IS NULL OR category = '') AND status = 'active'").all();
@@ -1681,4 +1701,4 @@ async function getPortfolio(request, env, handle) {
     artworks: (artworks.results || []).map(function (r) { const c = artworkRow(r); c.likes = r.likes || 0; c.saves = r.saves || 0; return c; }),
     projects,
   });
-}
+       }
