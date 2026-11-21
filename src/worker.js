@@ -120,6 +120,7 @@ async function handleApi(request, env, url) {
   if (reactMatch && request.method === "POST") return reactToArtwork(request, env, reactMatch[1], reactMatch[2]);
   if (url.pathname === "/api/react-state" && request.method === "GET") return reactState(request, env);
   if (url.pathname === "/api/my/hides" && request.method === "GET") return myHides(request, env);
+  if (url.pathname === "/api/my/saves" && request.method === "GET") return mySaves(request, env);
   if (url.pathname === "/api/admin/reports" && request.method === "GET") return adminReports(request, env);
   const publicArtwork = url.pathname.match(/^\/api\/artwork\/([A-Za-z0-9-]+)$/);
   if (publicArtwork && request.method === "GET") return getArtwork(request, env, publicArtwork[1]);
@@ -1261,13 +1262,13 @@ async function projectsForUser(env, userId) {
   const out = [];
   for (const p of projects.results || []) {
     const items = await env.DB.prepare(
-      "SELECT a.* FROM project_items pi JOIN artworks a ON a.id = pi.artwork_id WHERE pi.project_id = ? AND a.status = 'active' ORDER BY pi.added_at DESC"
+      "SELECT a.*, (SELECT COUNT(*) FROM artwork_likes al WHERE al.artwork_id = a.id) AS likes, (SELECT COUNT(*) FROM artwork_saves sv WHERE sv.artwork_id = a.id) AS saves FROM project_items pi JOIN artworks a ON a.id = pi.artwork_id WHERE pi.project_id = ? AND a.status = 'active' ORDER BY pi.added_at DESC"
     ).bind(p.id).all();
     const rows = items.results || [];
     let cover = null;
     const coverRow = rows.find((r) => r.id === p.cover_artwork_id) || rows[0];
     if (coverRow) cover = "/img/" + coverRow.image_key;
-    out.push({ id: p.id, title: p.title, cover, count: rows.length, artworks: rows.map(artworkRow) });
+    out.push({ id: p.id, title: p.title, cover, count: rows.length, artworks: rows.map(function (r) { const c = artworkRow(r); c.likes = r.likes || 0; c.saves = r.saves || 0; return c; }) });
   }
   return out;
 }
@@ -1339,6 +1340,8 @@ function publicCard(row) {
     model: row.model || "",
     image: "/img/" + row.image_key,
     views: row.views || 0,
+    likes: row.likes || 0,
+    saves: row.saves || 0,
     created_at: row.created_at,
     handle: row.owner_handle,
     owner: row.owner_name,
@@ -1349,7 +1352,7 @@ async function recentArtworks(request, env) {
   const meUser = await getSessionUser(request, env);
   const hideClause = meUser ? " AND a.id NOT IN (SELECT artwork_id FROM artwork_hides WHERE user_id = ?)" : "";
   const stmt = env.DB.prepare(
-    "SELECT a.id, a.title, a.prompt, a.model, a.image_key, a.views, a.created_at, u.handle AS owner_handle, u.name AS owner_name FROM artworks a JOIN users u ON u.id = a.user_id WHERE a.status = 'active'" + hideClause + " ORDER BY a.created_at DESC LIMIT 12"
+    "SELECT a.id, a.title, a.prompt, a.model, a.image_key, a.views, a.created_at, u.handle AS owner_handle, u.name AS owner_name, (SELECT COUNT(*) FROM artwork_likes al WHERE al.artwork_id = a.id) AS likes, (SELECT COUNT(*) FROM artwork_saves sv WHERE sv.artwork_id = a.id) AS saves FROM artworks a JOIN users u ON u.id = a.user_id WHERE a.status = 'active'" + hideClause + " ORDER BY a.created_at DESC LIMIT 12"
   );
   const rows = meUser ? await stmt.bind(meUser.id).all() : await stmt.all();
   return json({ artworks: (rows.results || []).map(publicCard) });
@@ -1359,11 +1362,17 @@ async function featuredWorks(request, env) {
   const meUser = await getSessionUser(request, env);
   const hideClause = meUser ? " AND a.id NOT IN (SELECT artwork_id FROM artwork_hides WHERE user_id = ?)" : "";
   const stmt = env.DB.prepare(
-    "SELECT a.id, a.title, a.prompt, a.model, a.image_key, a.views, a.created_at, u.handle AS owner_handle, u.name AS owner_name FROM artworks a JOIN users u ON u.id = a.user_id WHERE a.status = 'active'" + hideClause + " ORDER BY a.views DESC, a.created_at DESC LIMIT 20"
+    "SELECT a.id, a.title, a.prompt, a.model, a.image_key, a.views, a.created_at, u.handle AS owner_handle, u.name AS owner_name, (SELECT COUNT(*) FROM artwork_likes al WHERE al.artwork_id = a.id) AS likes, (SELECT COUNT(*) FROM artwork_saves sv WHERE sv.artwork_id = a.id) AS saves FROM artworks a JOIN users u ON u.id = a.user_id WHERE a.status = 'active'" + hideClause + " ORDER BY a.views DESC, a.created_at DESC LIMIT 20"
   );
   const arts = meUser ? await stmt.bind(meUser.id).all() : await stmt.all();
   const pages = await env.DB.prepare("SELECT page, views FROM page_views ORDER BY views DESC LIMIT 40").all();
-  return json({ artworks: (arts.results || []).map(publicCard), pages: (pages.results || []) });
+  const likeRows = await env.DB.prepare("SELECT artwork_id, COUNT(*) AS n FROM artwork_likes WHERE artwork_id LIKE 'static:%' GROUP BY artwork_id").all();
+  const saveRows = await env.DB.prepare("SELECT artwork_id, COUNT(*) AS n FROM artwork_saves WHERE artwork_id LIKE 'static:%' GROUP BY artwork_id").all();
+  const likeMap = {}, saveMap = {};
+  (likeRows.results || []).forEach(function (r) { likeMap[r.artwork_id] = r.n; });
+  (saveRows.results || []).forEach(function (r) { saveMap[r.artwork_id] = r.n; });
+  const pagesOut = (pages.results || []).map(function (p) { return { page: p.page, views: p.views, likes: likeMap["static:" + p.page] || 0, saves: saveMap["static:" + p.page] || 0 }; });
+  return json({ artworks: (arts.results || []).map(publicCard), pages: pagesOut });
 }
 
 async function trackPageView(request, env) {
@@ -1442,6 +1451,19 @@ async function myHides(request, env) {
   return json({ hides: (rows.results || []).map(function (r) { return r.artwork_id; }) });
 }
 
+async function mySaves(request, env) {
+  const user = await getSessionUser(request, env);
+  if (!user) return json({ error: "Not signed in" }, 401);
+  const rows = await env.DB.prepare(
+    "SELECT s.artwork_id AS target, s.created_at AS saved_at, a.id AS aid, a.title AS title, a.image_key AS image_key, a.views AS views, u.handle AS owner_handle FROM artwork_saves s LEFT JOIN artworks a ON a.id = s.artwork_id AND a.status = 'active' LEFT JOIN users u ON u.id = a.user_id WHERE s.user_id = ? ORDER BY s.created_at DESC LIMIT 100"
+  ).bind(user.id).all();
+  const saves = (rows.results || []).map(function (r) {
+    if (r.aid) return { id: r.aid, title: r.title, image: "/img/" + r.image_key, views: r.views || 0, handle: r.owner_handle, saved_at: r.saved_at };
+    return { static_id: r.target.indexOf("static:") === 0 ? r.target.slice(7) : r.target, saved_at: r.saved_at };
+  });
+  return json({ saves: saves });
+}
+
 async function adminReports(request, env) {
   if (!(await getAdminUser(request, env))) return notFound();
   const rows = await env.DB.prepare(
@@ -1479,7 +1501,7 @@ async function getPortfolio(request, env, handle) {
   ).bind(handle).first();
   if (!user) return json({ error: "Portfolio not found." }, 404);
   const artworks = await env.DB.prepare(
-    "SELECT * FROM artworks WHERE user_id = ? AND status = 'active' AND id NOT IN (SELECT artwork_id FROM project_items) ORDER BY created_at DESC"
+    "SELECT a.*, (SELECT COUNT(*) FROM artwork_likes al WHERE al.artwork_id = a.id) AS likes, (SELECT COUNT(*) FROM artwork_saves sv WHERE sv.artwork_id = a.id) AS saves FROM artworks a WHERE a.user_id = ? AND a.status = 'active' AND a.id NOT IN (SELECT artwork_id FROM project_items) ORDER BY a.created_at DESC"
   ).bind(user.id).all();
   const projects = await projectsForUser(env, user.id);
   return json({
@@ -1490,7 +1512,7 @@ async function getPortfolio(request, env, handle) {
       avatar: user.avatar_data || null,
       member_since: (user.created_at || "").slice(0, 10),
     },
-    artworks: (artworks.results || []).map(artworkRow),
+    artworks: (artworks.results || []).map(function (r) { const c = artworkRow(r); c.likes = r.likes || 0; c.saves = r.saves || 0; return c; }),
     projects,
   });
-              }
+                      }
