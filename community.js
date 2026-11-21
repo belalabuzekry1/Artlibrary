@@ -60,7 +60,10 @@
             modelToggle.addEventListener("click", function (e) { e.preventDefault(); if (listbox.hidden) { renderModelList(); listbox.hidden = false; } else { listbox.hidden = true; } });
             modelInput.addEventListener("focus", function () { renderModelList(); listbox.hidden = false; });
             modelInput.addEventListener("input", function () { renderModelList(); listbox.hidden = false; });
-            modelInput.addEventListener("keydown", function (e) { if (e.key === "Escape") listbox.hidden = true; });
+            modelInput.addEventListener("keydown", function (e) {
+                if (e.key === "Escape") listbox.hidden = true;
+                if (e.key === "Enter") { e.preventDefault(); listbox.hidden = true; }
+            });
             document.addEventListener("click", function (e) { if (!combo.contains(e.target)) listbox.hidden = true; });
         }
 
