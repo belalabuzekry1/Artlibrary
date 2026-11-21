@@ -349,6 +349,24 @@
             var form = document.getElementById("creation-edit-form");
             if (!editBtn || !form) return;
             fetch("api/me", { credentials: "same-origin" }).then(function (r) { return r.ok ? r.json() : null; }).then(function (me) {
+                if (me && me.user && me.user.is_admin) {
+                    var adminDel = document.getElementById("creation-admin-delete");
+                    if (adminDel) {
+                        adminDel.hidden = false;
+                        adminDel.addEventListener("click", function () {
+                            if (!window.confirm('Admin: delete "' + (a.title || "this artwork") + '" for good? This removes the image, likes, saves and reports.')) return;
+                            adminDel.disabled = true;
+                            postJson("api/admin/artworks/" + a.id + "/delete", {}).then(function (res) {
+                                if (res.status >= 200 && res.status < 300) { window.location.href = "index.html#explore"; return; }
+                                adminDel.disabled = false;
+                                alert(res.data.error || "Could not delete.");
+                            }).catch(function () {
+                                adminDel.disabled = false;
+                                alert("Could not reach the server.");
+                            });
+                        });
+                    }
+                }
                 if (!me || !me.user || me.user.handle.toLowerCase() !== (owner.handle || "").toLowerCase()) return;
                 editBtn.hidden = false;
                 var projSelect = document.getElementById("creation-project");
