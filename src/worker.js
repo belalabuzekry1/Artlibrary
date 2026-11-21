@@ -1394,6 +1394,7 @@ function publicCard(row) {
     title: row.title,
     prompt: row.prompt,
     model: row.model || "",
+    category: row.category || "",
     image: "/img/" + row.image_key,
     views: row.views || 0,
     likes: row.likes || 0,
@@ -1645,4 +1646,4 @@ async function getPortfolio(request, env, handle) {
     artworks: (artworks.results || []).map(function (r) { const c = artworkRow(r); c.likes = r.likes || 0; c.saves = r.saves || 0; return c; }),
     projects,
   });
-       }
+}
