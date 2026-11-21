@@ -627,7 +627,7 @@
         }
         paint();
         function post(action, body) {
-            return fetch(BASE + "api/artworks/" + encodeURIComponent(artworkId) + "/" + action, {
+            return fetch(BASE + "api/artworks/" + artworkId + "/" + action, {
                 method: "POST",
                 credentials: "same-origin",
                 headers: { "Content-Type": "application/json" },
