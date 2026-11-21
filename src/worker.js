@@ -1663,6 +1663,8 @@ async function adminDeleteUser(request, env) {
   await env.DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(userId).run();
   await env.DB.prepare("DELETE FROM email_tokens WHERE user_id = ?").bind(userId).run();
   await env.DB.prepare("DELETE FROM auth_codes WHERE user_id = ?").bind(userId).run();
+  await env.DB.prepare("INSERT INTO deletion_feedback (id, username, email, mode, period, reason, created_at) VALUES (?, ?, ?, ?, NULL, ?, ?)")
+    .bind(crypto.randomUUID(), target.handle, target.email, "permanent", "Removed by admin.", new Date().toISOString()).run();
   await env.DB.prepare("DELETE FROM users WHERE id = ?").bind(userId).run();
   try {
     await sendEmail(env, ADMIN_EMAIL, "ArtLibrary user removed by admin: " + target.handle,
@@ -1752,4 +1754,4 @@ async function getPortfolio(request, env, handle) {
     artworks: (artworks.results || []).map(function (r) { const c = artworkRow(r); c.likes = r.likes || 0; c.saves = r.saves || 0; return c; }),
     projects,
   });
-      }
+}
