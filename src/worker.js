@@ -106,6 +106,7 @@ async function handleApi(request, env, url) {
   if (url.pathname === "/api/account/deactivate" && request.method === "POST") return deactivateAccount(request, env);
   if (url.pathname === "/api/account/delete" && request.method === "POST") return deleteAccount(request, env);
   if (url.pathname === "/api/admin/users" && request.method === "GET") return adminUsers(request, env);
+  if (url.pathname === "/api/admin/users/delete" && request.method === "POST") return adminDeleteUser(request, env);
   if (url.pathname === "/api/admin/deletions" && request.method === "GET") return adminDeletions(request, env);
   if (url.pathname === "/api/me" && request.method === "GET") return me(request, env);
   if (url.pathname === "/api/artworks" && request.method === "POST") return createArtwork(request, env);
@@ -123,6 +124,7 @@ async function handleApi(request, env, url) {
   if (url.pathname === "/api/my/saves" && request.method === "GET") return mySaves(request, env);
   if (url.pathname === "/api/notifications" && request.method === "GET") return myNotifications(request, env);
   if (url.pathname === "/api/my/points" && request.method === "GET") return myPoints(request, env);
+  if (url.pathname === "/api/leaderboard" && request.method === "GET") return leaderboard(request, env);
   if (url.pathname === "/api/notifications/read" && request.method === "POST") return markNotificationsRead(request, env);
   if (url.pathname === "/api/admin/reports" && request.method === "GET") return adminReports(request, env);
   if (url.pathname === "/api/admin/backfill-categories" && request.method === "POST") return adminBackfillCategories(request, env);
@@ -770,9 +772,10 @@ async function logout(request, env) {
 async function adminUsers(request, env) {
   if (!(await getAdminUser(request, env))) return notFound();
   const result = await env.DB.prepare(
-    "SELECT handle, email, created_at, password_hash, email_verified_at, deactivated_until, signup_city, signup_country, signup_device_type, last_login_at, last_login_city, last_login_country, last_login_device_type FROM users ORDER BY created_at DESC"
+    "SELECT id, handle, email, created_at, password_hash, email_verified_at, deactivated_until, signup_city, signup_country, signup_device_type, last_login_at, last_login_city, last_login_country, last_login_device_type FROM users ORDER BY created_at DESC"
   ).all();
   const users = (result.results || []).map((row) => ({
+    id: row.id,
     handle: row.handle,
     email: row.email,
     created_at: row.created_at,
@@ -1553,6 +1556,13 @@ async function awardPoints(env, userId, artworkId, kind, delta) {
     .bind(crypto.randomUUID(), userId, artworkId || null, kind, delta, day, now).run();
 }
 
+async function leaderboard(request, env) {
+  const rows = await env.DB.prepare(
+    "SELECT u.name, u.handle, SUM(pl.delta) AS pts FROM points_ledger pl JOIN users u ON u.id = pl.user_id WHERE pl.created_at > datetime('now', '-7 days') AND u.deactivated_until IS NULL GROUP BY pl.user_id HAVING pts > 0 ORDER BY pts DESC LIMIT 5"
+  ).all();
+  return json({ leaderboard: (rows.results || []).map((r) => ({ name: r.name, handle: r.handle, points: r.pts })) });
+}
+
 async function myPoints(request, env) {
   const user = await getSessionUser(request, env);
   if (!user) return json({ error: "Not signed in" }, 401);
@@ -1618,6 +1628,46 @@ async function mySaves(request, env) {
     return { static_id: r.target.indexOf("static:") === 0 ? r.target.slice(7) : r.target, saved_at: r.saved_at };
   });
   return json({ saves: saves });
+}
+
+async function adminDeleteUser(request, env) {
+  if (!(await getAdminUser(request, env))) return notFound();
+  const body = await readJson(request);
+  const userId = body && typeof body.userId === "string" ? body.userId : "";
+  if (!userId) return json({ error: "Missing user." }, 400);
+  const target = await env.DB.prepare("SELECT id, handle, email FROM users WHERE id = ?").bind(userId).first();
+  if (!target) return json({ error: "User not found." }, 404);
+  if (typeof target.email === "string" && target.email.toLowerCase() === ADMIN_EMAIL) {
+    return json({ error: "The admin account cannot be deleted." }, 400);
+  }
+  const artRows = await env.DB.prepare("SELECT id, image_key FROM artworks WHERE user_id = ?").bind(userId).all();
+  const artIds = (artRows.results || []).map((r) => r.id);
+  for (const row of artRows.results || []) {
+    if (env.IMAGES && row.image_key) {
+      try { await env.IMAGES.delete(row.image_key); } catch (err) { /* row deletion still proceeds */ }
+    }
+  }
+  const artIn = artIds.length ? " IN (" + artIds.map(() => "?").join(",") + ")" : null;
+  for (const t of ["artwork_likes", "artwork_saves", "artwork_hides", "artwork_reports"]) {
+    await env.DB.prepare("DELETE FROM " + t + " WHERE user_id = ?").bind(userId).run();
+    if (artIn) await env.DB.prepare("DELETE FROM " + t + " WHERE artwork_id" + artIn).bind(...artIds).run();
+  }
+  await env.DB.prepare("DELETE FROM notifications WHERE user_id = ? OR actor_id = ?" + (artIn ? " OR artwork_id" + artIn : ""))
+    .bind(...(artIn ? [userId, userId, ...artIds] : [userId, userId])).run();
+  if (artIn) await env.DB.prepare("DELETE FROM points_ledger WHERE artwork_id" + artIn).bind(...artIds).run();
+  await env.DB.prepare("DELETE FROM points_ledger WHERE user_id = ?").bind(userId).run();
+  await env.DB.prepare("DELETE FROM project_items WHERE project_id IN (SELECT id FROM projects WHERE user_id = ?)").bind(userId).run();
+  await env.DB.prepare("DELETE FROM projects WHERE user_id = ?").bind(userId).run();
+  await env.DB.prepare("DELETE FROM artworks WHERE user_id = ?").bind(userId).run();
+  await env.DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(userId).run();
+  await env.DB.prepare("DELETE FROM email_tokens WHERE user_id = ?").bind(userId).run();
+  await env.DB.prepare("DELETE FROM auth_codes WHERE user_id = ?").bind(userId).run();
+  await env.DB.prepare("DELETE FROM users WHERE id = ?").bind(userId).run();
+  try {
+    await sendEmail(env, ADMIN_EMAIL, "ArtLibrary user removed by admin: " + target.handle,
+      "An admin removed an account.\n\nUsername: " + target.handle + "\nEmail: " + target.email + "\nArtworks removed: " + artIds.length + "\nTime: " + new Date().toISOString());
+  } catch (err) { /* the removal already happened */ }
+  return json({ ok: true, handle: target.handle, artworksRemoved: artIds.length });
 }
 
 async function adminDeleteArtwork(request, env, artworkId) {
