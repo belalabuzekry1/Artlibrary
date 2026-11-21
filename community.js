@@ -333,10 +333,154 @@
             }
             document.getElementById("creation-loading").hidden = true;
             card.hidden = false;
+            setupEdit(a, owner);
         }).catch(function () {
             document.getElementById("creation-loading").hidden = true;
             document.getElementById("creation-missing").hidden = false;
         });
+
+        /* Owner-only edit mode: same fields as uploading fresh */
+        var MODEL_OPTIONS = ["Midjourney", "DALL-E / ChatGPT", "Gemini (Nano Banana)", "Stable Diffusion", "Flux", "Ideogram", "Leonardo AI", "Adobe Firefly", "Recraft", "Runway", "Instinct"];
+        function setupEdit(a, owner) {
+            var editBtn = document.getElementById("creation-edit");
+            var form = document.getElementById("creation-edit-form");
+            if (!editBtn || !form) return;
+            fetch("api/me", { credentials: "same-origin" }).then(function (r) { return r.ok ? r.json() : null; }).then(function (me) {
+                if (!me || !me.user || me.user.handle.toLowerCase() !== (owner.handle || "").toLowerCase()) return;
+                editBtn.hidden = false;
+            }).catch(function () { /* visitor */ });
+
+            var combo = document.getElementById("edit-model-combo");
+            var modelInput = form.elements.model;
+            var listbox = document.getElementById("edit-model-listbox");
+            var renderModelList = function () {
+                var f = (modelInput.value || "").trim().toLowerCase();
+                listbox.textContent = "";
+                MODEL_OPTIONS.filter(function (m) { return !f || m.toLowerCase().indexOf(f) > -1; }).forEach(function (m) {
+                    var b = document.createElement("button");
+                    b.type = "button";
+                    b.className = "combo-option";
+                    b.textContent = m;
+                    b.addEventListener("click", function () { modelInput.value = m; listbox.hidden = true; modelInput.focus(); });
+                    listbox.appendChild(b);
+                });
+                if (!listbox.children.length) {
+                    var em = document.createElement("div");
+                    em.className = "combo-empty";
+                    em.textContent = "No match - your custom model name will be used";
+                    listbox.appendChild(em);
+                }
+            };
+            document.getElementById("edit-model-toggle").addEventListener("click", function (e) { e.preventDefault(); if (listbox.hidden) { renderModelList(); listbox.hidden = false; } else { listbox.hidden = true; } });
+            modelInput.addEventListener("focus", function () { renderModelList(); listbox.hidden = false; });
+            modelInput.addEventListener("input", function () { renderModelList(); listbox.hidden = false; });
+            modelInput.addEventListener("keydown", function (e) {
+                if (e.key === "Escape") listbox.hidden = true;
+                if (e.key === "Enter") { e.preventDefault(); listbox.hidden = true; }
+            });
+            document.addEventListener("click", function (e) { if (!combo.contains(e.target)) listbox.hidden = true; });
+
+            var chipsWrap = document.getElementById("edit-tags-chips");
+            var tagsField = document.getElementById("edit-tags-field");
+            var tagChips = [];
+            var renderChips = function () {
+                Array.prototype.slice.call(chipsWrap.querySelectorAll(".tag-chip")).forEach(function (n) { n.remove(); });
+                tagChips.forEach(function (t, i) {
+                    var chip = document.createElement("span");
+                    chip.className = "tag-chip";
+                    chip.appendChild(document.createTextNode(t));
+                    var x = document.createElement("button");
+                    x.type = "button";
+                    x.className = "tag-chip-x";
+                    x.setAttribute("aria-label", "Remove tag " + t);
+                    x.textContent = "\u00D7";
+                    x.addEventListener("click", function () { tagChips.splice(i, 1); renderChips(); });
+                    chip.appendChild(x);
+                    chipsWrap.insertBefore(chip, tagsField);
+                });
+            };
+            var addTag = function (raw) {
+                var t = (raw || "").trim().replace(/,+$/, "").trim();
+                if (t && tagChips.indexOf(t) === -1 && tagChips.length < 10) { tagChips.push(t); renderChips(); }
+            };
+            tagsField.addEventListener("keydown", function (e) {
+                if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addTag(tagsField.value); tagsField.value = ""; }
+                else if (e.key === "Backspace" && !tagsField.value && tagChips.length) { tagChips.pop(); renderChips(); }
+            });
+            tagsField.addEventListener("blur", function () { addTag(tagsField.value); tagsField.value = ""; });
+
+            var displayEls = ["creation-title", "creation-model", "creation-tags", "creation-prompt", "creation-copy", "creation-hint-wrap"];
+            editBtn.addEventListener("click", function () {
+                form.elements.title.value = a.title || "";
+                modelInput.value = a.model || "";
+                form.elements.prompt.value = a.prompt || "";
+                form.elements.editableHint.value = a.editable_hint || "";
+                tagChips = (a.tags || []).slice(0, 10);
+                renderChips();
+                displayEls.forEach(function (id) { document.getElementById(id).hidden = true; });
+                editBtn.hidden = true;
+                form.hidden = false;
+                form.elements.title.focus();
+            });
+            document.getElementById("creation-edit-cancel").addEventListener("click", function () {
+                form.hidden = true;
+                displayEls.forEach(function (id) {
+                    var node = document.getElementById(id);
+                    node.hidden = id === "creation-hint-wrap" ? !(a.editable_hint) : false;
+                });
+                editBtn.hidden = false;
+            });
+            form.addEventListener("submit", function (e) {
+                e.preventDefault();
+                var status = document.getElementById("creation-edit-status");
+                status.hidden = true;
+                addTag(tagsField.value);
+                tagsField.value = "";
+                var saveBtn = form.querySelector("button[type=submit]");
+                saveBtn.disabled = true;
+                saveBtn.textContent = "Saving...";
+                postJson("api/artworks/" + a.id + "/update", {
+                    title: (form.elements.title.value || "").trim(),
+                    model: (modelInput.value || "").trim(),
+                    prompt: form.elements.prompt.value || "",
+                    editableHint: form.elements.editableHint.value || "",
+                    tags: tagChips.slice(0, 10),
+                }).then(function (res) {
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = "Save changes";
+                    if (res.status >= 200 && res.status < 300 && res.data.artwork) {
+                        a = res.data.artwork;
+                        document.title = a.title + " | ArtLibrary";
+                        document.getElementById("creation-title").textContent = a.title;
+                        document.getElementById("creation-model").textContent = a.model ? "Made with " + a.model : "";
+                        var tagsWrap = document.getElementById("creation-tags");
+                        tagsWrap.textContent = "";
+                        (a.tags || []).forEach(function (t) {
+                            var tag = document.createElement("span");
+                            tag.className = "creation-tag";
+                            tag.textContent = t;
+                            tagsWrap.appendChild(tag);
+                        });
+                        document.getElementById("creation-prompt").textContent = a.prompt;
+                        document.getElementById("creation-hint").textContent = a.editable_hint || "";
+                        form.hidden = true;
+                        displayEls.forEach(function (id) {
+                            var node = document.getElementById(id);
+                            node.hidden = id === "creation-hint-wrap" ? !a.editable_hint : false;
+                        });
+                        editBtn.hidden = false;
+                        return;
+                    }
+                    status.textContent = res.data.error || "Could not save. Please try again.";
+                    status.hidden = false;
+                }).catch(function () {
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = "Save changes";
+                    status.textContent = "Could not reach the server. Check your connection and try again.";
+                    status.hidden = false;
+                });
+            });
+        }
 
         document.getElementById("creation-copy").addEventListener("click", function () {
             var text = document.getElementById("creation-prompt").textContent;
