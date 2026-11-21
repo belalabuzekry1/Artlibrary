@@ -327,7 +327,11 @@
         currentUser = u;
         document.getElementById("account-name").textContent = "Hi, " + u.name;
         document.getElementById("account-email").textContent = u.email;
-        document.getElementById("account-handle").textContent = "artlibrary.ai/" + u.handle + " (coming soon)";
+        document.getElementById("account-handle").textContent = "artlibrary.ai/" + u.handle;
+        var handleInline = document.getElementById("account-handle-inline");
+        if (handleInline) handleInline.textContent = u.handle;
+        var portfolioLink = document.getElementById("account-portfolio-link");
+        if (portfolioLink) portfolioLink.href = "/" + u.handle;
         var since = (u.created_at || "").slice(0, 10);
         document.getElementById("account-since").textContent = since || "-";
         document.getElementById("account-verified").textContent = u.email_verified ? "Confirmed" : "Not confirmed yet";
