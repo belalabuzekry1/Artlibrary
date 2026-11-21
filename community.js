@@ -285,7 +285,9 @@
             label.textContent = a.title;
             var stats = document.createElement("span");
             stats.className = "gallery-card-stats";
-            stats.textContent = "\u2665 " + (a.likes || 0) + " \u00B7 \uD83D\uDD16 " + (a.saves || 0) + " \u00B7 \uD83D\uDC41 " + (a.views || 0);
+            var eyeIco = (window.ArtStats && window.ArtStats.EYE_ICON) || "\uD83D\uDC41";
+            var saveIco = (window.ArtStats && window.ArtStats.SAVE_ICON) || "\uD83D\uDD16";
+            stats.innerHTML = "\u2665 " + (a.likes || 0) + " \u00B7 " + saveIco + " " + (a.saves || 0) + " \u00B7 " + eyeIco + " " + (a.views || 0);
             link.appendChild(img);
             link.appendChild(stats);
             link.appendChild(label);
