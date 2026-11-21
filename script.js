@@ -134,6 +134,8 @@
                 fetch(BASE + "api/track-view", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ page: slug }), keepalive: true }).catch(function () { /* tracking only */ });
             }
         } catch (e) { /* private mode: skip tracking */ }
+        var promptBoxEl = document.querySelector(".prompt-box");
+        if (promptBoxEl && slug) promptBoxEl.parentNode.insertBefore(buildReactionBar("static:" + slug), promptBoxEl.nextSibling);
         var it = BY_ID[slug];
         if (!it) return;
         var editor = document.getElementById("prompt-editor");
@@ -402,6 +404,15 @@
             render();
         }).catch(function () { /* static featured stays */ });
 
+        /* Works the member hid stay out of their explore grid */
+        fetch("api/my/hides", { credentials: "same-origin" }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+            if (!d || !d.hides) return;
+            var hidden = {};
+            d.hides.forEach(function (id) { hidden[id] = true; });
+            cards.forEach(function (c) { if (hidden[c._it.id] || hidden["static:" + c._it.id]) c._hiddenByMe = true; });
+            render();
+        }).catch(function () { /* signed out */ });
+
         function render() {
             var words = norm(searchInput && searchInput.value).split(" ").filter(Boolean);
             var filtersOn = words.length > 0 || state.cat !== "all" || state.model !== "all";
@@ -409,7 +420,7 @@
             var shown = 0, matched = 0;
             cards.forEach(function (c) {
                 var it = c._it;
-                var ok = words.every(function (w) { return c._text.indexOf(w) > -1; }) &&
+                var ok = !c._hiddenByMe && words.every(function (w) { return c._text.indexOf(w) > -1; }) &&
                     (!catNames || catNames.indexOf(it.category) > -1) &&
                     (state.model === "all" || norm(it.model) === state.model);
                 if (ok) matched++;
@@ -588,6 +599,142 @@
         render();
         renderLatest();
     }
+
+    /* ---------- shared reaction bar (like / save / hide / report) ---------- */
+    var REPORT_REASONS = [
+        ["nudity", "Nudity"],
+        ["sexual", "Sexual activity"],
+        ["racism", "Racism or hate"],
+        ["bullying", "Bullying or harassment"],
+        ["other", "Something else"],
+    ];
+
+    function buildReactionBar(artworkId) {
+        var bar = el("div", "reaction-bar");
+        var likeBtn = el("button", "reaction-btn");
+        var saveBtn = el("button", "reaction-btn");
+        var hideBtn = el("button", "reaction-btn");
+        var reportBtn = el("button", "reaction-btn reaction-report", "Report");
+        [likeBtn, saveBtn, hideBtn, reportBtn].forEach(function (b) { b.type = "button"; bar.appendChild(b); });
+        var state = { likes: 0, saves: 0, liked: false, saved: false, hidden: false };
+        function paint() {
+            likeBtn.textContent = (state.liked ? "\u2665 " : "\u2661 ") + (state.likes > 0 ? state.likes : "Like");
+            likeBtn.classList.toggle("is-active", state.liked);
+            saveBtn.textContent = state.saved ? "Saved \u2713" : "Save";
+            saveBtn.classList.toggle("is-active", state.saved);
+            hideBtn.textContent = state.hidden ? "Hidden" : "Hide";
+            hideBtn.classList.toggle("is-active", state.hidden);
+        }
+        paint();
+        function post(action, body) {
+            return fetch(BASE + "api/artworks/" + encodeURIComponent(artworkId) + "/" + action, {
+                method: "POST",
+                credentials: "same-origin",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body || {}),
+            }).then(function (r) {
+                if (r.status === 401) { window.location.href = BASE + "login.html"; return null; }
+                if (!r.ok) return r.json().then(function (d) { throw new Error((d && d.error) || "Failed"); });
+                return r.json();
+            });
+        }
+        likeBtn.addEventListener("click", function () {
+            post("like").then(function (d) {
+                if (!d) return;
+                state.likes += d.active ? 1 : -1;
+                state.liked = !!d.active;
+                paint();
+            }).catch(function () {});
+        });
+        saveBtn.addEventListener("click", function () {
+            post("save").then(function (d) {
+                if (!d) return;
+                state.saved = !!d.active;
+                paint();
+            }).catch(function () {});
+        });
+        hideBtn.addEventListener("click", function () {
+            post("hide").then(function (d) {
+                if (!d) return;
+                state.hidden = !!d.active;
+                paint();
+            }).catch(function () {});
+        });
+        reportBtn.addEventListener("click", function () { openReportDialog(); });
+
+        function openReportDialog() {
+            var overlay = el("div", "report-overlay");
+            var dlg = el("div", "report-dialog");
+            dlg.setAttribute("role", "dialog");
+            dlg.setAttribute("aria-label", "Report this work");
+            dlg.appendChild(el("h3", null, "Report this work"));
+            var selected = null;
+            var radios = [];
+            REPORT_REASONS.forEach(function (r) {
+                var lab = el("label", "report-reason");
+                var radio = document.createElement("input");
+                radio.type = "radio";
+                radio.name = "report-reason";
+                radio.value = r[0];
+                radio.addEventListener("change", function () { selected = r[0]; detailsWrap.hidden = false; });
+                radios.push(radio);
+                lab.appendChild(radio);
+                lab.appendChild(document.createTextNode(" " + r[1]));
+                dlg.appendChild(lab);
+            });
+            var detailsWrap = el("div", null);
+            detailsWrap.hidden = true;
+            var details = document.createElement("textarea");
+            details.rows = 3;
+            details.maxLength = 1000;
+            details.placeholder = "Tell us more (required for Something else)";
+            detailsWrap.appendChild(details);
+            dlg.appendChild(detailsWrap);
+            var err = el("p", "auth-note report-error");
+            err.hidden = true;
+            dlg.appendChild(err);
+            var actions = el("div", "report-actions");
+            var cancel = el("button", "secondary-button", "Cancel");
+            cancel.type = "button";
+            var send = el("button", "primary-button", "Send report");
+            send.type = "button";
+            actions.appendChild(cancel);
+            actions.appendChild(send);
+            dlg.appendChild(actions);
+            overlay.appendChild(dlg);
+            cancel.addEventListener("click", function () { overlay.remove(); });
+            overlay.addEventListener("click", function (e) { if (e.target === overlay) overlay.remove(); });
+            send.addEventListener("click", function () {
+                if (!selected) { err.textContent = "Choose a reason first."; err.hidden = false; return; }
+                if (selected === "other" && !details.value.trim()) { err.textContent = "Please describe the problem."; err.hidden = false; return; }
+                send.disabled = true;
+                post("report", { reason: selected, details: details.value.trim() }).then(function (d) {
+                    if (!d) return;
+                    dlg.textContent = "";
+                    dlg.appendChild(el("p", "report-thanks", "Thanks - the report was sent and the work stays up while it is reviewed."));
+                    setTimeout(function () { overlay.remove(); }, 1600);
+                }).catch(function (e2) {
+                    err.textContent = e2.message || "Could not send the report.";
+                    err.hidden = false;
+                    send.disabled = false;
+                });
+            });
+            document.body.appendChild(overlay);
+        }
+
+        fetch(BASE + "api/react-state?id=" + encodeURIComponent(artworkId), { credentials: "same-origin" })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (d) {
+                if (!d) return;
+                state.likes = d.likes || 0;
+                state.saves = d.saves || 0;
+                if (d.my) { state.liked = !!d.my.liked; state.saved = !!d.my.saved; state.hidden = !!d.my.hidden; }
+                paint();
+            }).catch(function () {});
+        return bar;
+    }
+
+    window.ArtReactions = { build: buildReactionBar };
 
     if (IS_ART_PAGE) initArtworkPage(); else initGallery();
 })();
