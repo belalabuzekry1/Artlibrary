@@ -316,6 +316,7 @@
             if (!it) return null;
             var a = el("a", "latest-image");
             a.href = artUrl(id);
+            a._artId = id;
             a.setAttribute("aria-label", "View " + it.title);
             var img = document.createElement("img");
             img.src = it.image; img.alt = it.title; img.loading = "lazy"; img.decoding = "async";
@@ -340,6 +341,7 @@
                 var img = document.createElement("img");
                 img.src = a.image; img.alt = a.title; img.loading = "lazy"; img.decoding = "async";
                 link.appendChild(img);
+                link.appendChild(thumbStats(a.likes, a.views));
                 return link;
             });
             memberLinks.slice().reverse().forEach(function (l) { latestGrid.insertBefore(l, latestGrid.firstChild); });
@@ -364,6 +366,7 @@
             info.appendChild(row);
             if (a.model) info.appendChild(el("span", "model", "\u2726 " + a.model));
             info.appendChild(el("p", "prompt-text", a.prompt));
+            info.appendChild(cardStats(a.likes, a.saves, a.views));
             var actions = el("div", "card-actions");
             var copy = el("button", "copy-prompt", "\uD83D\uDCCB Copy Prompt");
             copy.type = "button";
@@ -387,19 +390,30 @@
             card._it = { id: a.id, title: a.title, category: "@" + a.handle, model: a.model || "", prompt: a.prompt };
             card._text = norm([a.title, a.handle, a.model || "", a.prompt].join(" "));
             card._memberViews = a.views || 0;
+            card._memberLikes = a.likes || 0;
             return card;
         }
 
         fetch("api/featured").then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
             if (!d) return;
-            var pageViews = {};
-            (d.pages || []).forEach(function (p) { pageViews[p.page] = p.views; });
+            var pageStats = {};
+            (d.pages || []).forEach(function (p) { pageStats[p.page] = p; });
             var memberCards = (d.artworks || []).map(buildMemberCard);
             memberCards.slice().reverse().forEach(function (c) { grid.insertBefore(c, grid.firstChild); });
             cards = memberCards.concat(cards);
-            cards.forEach(function (c) { c._views = c._memberViews != null ? c._memberViews : (pageViews[c._it.id] || 0); });
-            if (cards.some(function (c) { return c._views > 0; })) {
-                cards.slice().sort(function (a, b) { return b._views - a._views; }).forEach(function (c) { grid.appendChild(c); });
+            cards.forEach(function (c) {
+                if (c._memberViews != null) { c._views = c._memberViews; c._likes = c._memberLikes || 0; return; }
+                var st = pageStats[c._it.id] || { views: 0, likes: 0, saves: 0 };
+                c._views = st.views || 0; c._likes = st.likes || 0;
+                var info = c.querySelector(".art-info");
+                var acts = c.querySelector(".card-actions");
+                if (info && acts) info.insertBefore(cardStats(st.likes, st.saves, st.views), acts);
+            });
+            latestCards.forEach(function (l) {
+                if (l._artId && pageStats[l._artId]) l.appendChild(thumbStats(pageStats[l._artId].likes, pageStats[l._artId].views));
+            });
+            if (cards.some(function (c) { return c._views > 0 || c._likes > 0; })) {
+                cards.slice().sort(function (a, b) { return (b._views - a._views) || (b._likes - a._likes); }).forEach(function (c) { grid.appendChild(c); });
             }
             render();
         }).catch(function () { /* static featured stays */ });
@@ -734,7 +748,18 @@
         return bar;
     }
 
+    function cardStats(likes, saves, views) {
+        var row = el("div", "card-stats");
+        row.appendChild(el("span", "stat stat-likes", "\u2665 " + (likes || 0)));
+        row.appendChild(el("span", "stat stat-saves", "\uD83D\uDD16 " + (saves || 0)));
+        row.appendChild(el("span", "stat stat-views", "\uD83D\uDC41 " + (views || 0)));
+        return row;
+    }
+    function thumbStats(likes, views) {
+        return el("span", "latest-stats", "\u2665 " + (likes || 0) + " \u00B7 \uD83D\uDC41 " + (views || 0));
+    }
     window.ArtReactions = { build: buildReactionBar };
+    window.ArtStats = { row: cardStats, thumb: thumbStats };
 
     if (IS_ART_PAGE) initArtworkPage(); else initGallery();
 })();
