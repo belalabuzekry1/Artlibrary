@@ -827,7 +827,7 @@
             bell.type = "button";
             bell.className = "notif-bell";
             bell.setAttribute("aria-label", "Notifications");
-            bell.textContent = "\uD83D\uDD14";
+            bell.innerHTML = '<svg class="notif-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9 a6 6 0 0 1 12 0 c0 5 2 6.5 2 6.5 H4 c0 0 2 -1.5 2 -6.5 Z"/><path d="M10 19 a2 2 0 0 0 4 0"/></svg>';
             var badge = document.createElement("span");
             badge.className = "notif-badge";
             badge.hidden = true;
@@ -880,8 +880,14 @@
                         item.href = base + "creation.html?id=" + encodeURIComponent(n.artwork_id);
                         var who = n.actor_name || ("@" + (n.actor_handle || "someone"));
                         var what = n.kind === "like" ? "liked" : "saved";
-                        item.appendChild(el("span", "notif-text", who + " " + what + " \u201C" + (n.title || "your art") + "\u201D"));
-                        item.appendChild(el("span", "notif-time", timeAgo(n.created_at)));
+                        var txt = document.createElement("span");
+                        txt.className = "notif-text";
+                        txt.textContent = who + " " + what + " \u201C" + (n.title || "your art") + "\u201D";
+                        var tm = document.createElement("span");
+                        tm.className = "notif-time";
+                        tm.textContent = timeAgo(n.created_at);
+                        item.appendChild(txt);
+                        item.appendChild(tm);
                         list.appendChild(item);
                     });
                     if (d.unread > 0) {
