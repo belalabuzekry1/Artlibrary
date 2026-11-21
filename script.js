@@ -127,7 +127,14 @@
        ARTWORK PAGE: editable prompt variables
        ===================================================== */
     function initArtworkPage() {
-        var it = BY_ID[document.body.getAttribute("data-art")];
+        var slug = document.body.getAttribute("data-art");
+        try {
+            if (slug && !sessionStorage.getItem("viewed:" + slug)) {
+                sessionStorage.setItem("viewed:" + slug, "1");
+                fetch(BASE + "api/track-view", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ page: slug }), keepalive: true }).catch(function () { /* tracking only */ });
+            }
+        } catch (e) { /* private mode: skip tracking */ }
+        var it = BY_ID[slug];
         if (!it) return;
         var editor = document.getElementById("prompt-editor");
         var promptEl = document.querySelector(".artwork-prompt");
@@ -320,6 +327,80 @@
             latestToggle.textContent = state.latestOpen ? "Show less \u2191" : "View all \u2192";
             latestToggle.hidden = latestCards.length <= PREVIEW;
         }
+
+        /* Member uploads show up first in Latest Additions, fresh on every load */
+        fetch("api/artworks/recent?limit=12").then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+            if (!d || !d.artworks || !d.artworks.length) return;
+            var memberLinks = d.artworks.map(function (a) {
+                var link = el("a", "latest-image");
+                link.href = "creation.html?id=" + encodeURIComponent(a.id);
+                link.setAttribute("aria-label", "View " + a.title);
+                var img = document.createElement("img");
+                img.src = a.image; img.alt = a.title; img.loading = "lazy"; img.decoding = "async";
+                link.appendChild(img);
+                return link;
+            });
+            memberLinks.slice().reverse().forEach(function (l) { latestGrid.insertBefore(l, latestGrid.firstChild); });
+            latestCards = memberLinks.concat(latestCards);
+            renderLatest();
+        }).catch(function () { /* static latest stays */ });
+
+        /* Featured = most viewed. Member artworks join the grid; once view data
+           arrives, cards with views sort ahead (ties keep the original order). */
+        function buildMemberCard(a) {
+            var card = el("article", "art-card");
+            card.setAttribute("role", "link");
+            card.setAttribute("tabindex", "0");
+            var imgWrap = el("div", "art-image");
+            var img = document.createElement("img");
+            img.src = a.image; img.alt = a.title; img.loading = "lazy"; img.decoding = "async";
+            imgWrap.appendChild(img);
+            var info = el("div", "art-info");
+            var row = el("div", "art-title-row");
+            row.appendChild(el("h3", null, a.title));
+            row.appendChild(el("span", "category", "@" + a.handle));
+            info.appendChild(row);
+            if (a.model) info.appendChild(el("span", "model", "\u2726 " + a.model));
+            info.appendChild(el("p", "prompt-text", a.prompt));
+            var actions = el("div", "card-actions");
+            var copy = el("button", "copy-prompt", "\uD83D\uDCCB Copy Prompt");
+            copy.type = "button";
+            copy.addEventListener("click", function (e) { e.stopPropagation(); copyText(a.prompt, copy); });
+            var open = el("a", "customize-link", "View \u2192");
+            open.href = "creation.html?id=" + encodeURIComponent(a.id);
+            actions.appendChild(copy);
+            actions.appendChild(open);
+            info.appendChild(actions);
+            card.appendChild(imgWrap);
+            card.appendChild(info);
+            var dest = "creation.html?id=" + encodeURIComponent(a.id);
+            card.addEventListener("click", function (e) {
+                if (e.target.closest("a, button")) return;
+                location.href = dest;
+            });
+            card.addEventListener("keydown", function (e) {
+                if (e.target !== card) return;
+                if (e.key === "Enter" || e.key === " ") { e.preventDefault(); location.href = dest; }
+            });
+            card._it = { id: a.id, title: a.title, category: "@" + a.handle, model: a.model || "", prompt: a.prompt };
+            card._text = norm([a.title, a.handle, a.model || "", a.prompt].join(" "));
+            card._memberViews = a.views || 0;
+            return card;
+        }
+
+        fetch("api/featured").then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+            if (!d) return;
+            var pageViews = {};
+            (d.pages || []).forEach(function (p) { pageViews[p.page] = p.views; });
+            var memberCards = (d.artworks || []).map(buildMemberCard);
+            memberCards.slice().reverse().forEach(function (c) { grid.insertBefore(c, grid.firstChild); });
+            cards = memberCards.concat(cards);
+            cards.forEach(function (c) { c._views = c._memberViews != null ? c._memberViews : (pageViews[c._it.id] || 0); });
+            if (cards.some(function (c) { return c._views > 0; })) {
+                cards.slice().sort(function (a, b) { return b._views - a._views; }).forEach(function (c) { grid.appendChild(c); });
+            }
+            render();
+        }).catch(function () { /* static featured stays */ });
 
         function render() {
             var words = norm(searchInput && searchInput.value).split(" ").filter(Boolean);
