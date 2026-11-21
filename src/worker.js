@@ -118,6 +118,9 @@ async function handleApi(request, env, url) {
   if (artworkMatch && request.method === "POST") return updateArtwork(request, env, artworkMatch[1], artworkMatch[2]);
   const publicArtwork = url.pathname.match(/^\/api\/artwork\/([A-Za-z0-9-]+)$/);
   if (publicArtwork && request.method === "GET") return getArtwork(request, env, publicArtwork[1]);
+  if (url.pathname === "/api/artworks/recent" && request.method === "GET") return recentArtworks(request, env);
+  if (url.pathname === "/api/featured" && request.method === "GET") return featuredWorks(request, env);
+  if (url.pathname === "/api/track-view" && request.method === "POST") return trackPageView(request, env);
   const portfolioMatch = url.pathname.match(/^\/api\/u\/([a-z0-9_-]{3,24})$/);
   if (portfolioMatch && request.method === "GET") return getPortfolio(request, env, portfolioMatch[1]);
   return json({ error: "Not found" }, 404);
@@ -1320,6 +1323,44 @@ async function updateArtwork(request, env, artworkId, action) {
     await env.DB.prepare("INSERT OR IGNORE INTO project_items (project_id, artwork_id, added_at) VALUES (?, ?, ?)").bind(project.id, artworkId, new Date().toISOString()).run();
     await env.DB.prepare("UPDATE projects SET cover_artwork_id = COALESCE(cover_artwork_id, ?) WHERE id = ?").bind(artworkId, project.id).run();
   }
+  return json({ ok: true });
+}
+
+function publicCard(row) {
+  return {
+    id: row.id,
+    title: row.title,
+    prompt: row.prompt,
+    model: row.model || "",
+    image: "/img/" + row.image_key,
+    views: row.views || 0,
+    created_at: row.created_at,
+    handle: row.owner_handle,
+    owner: row.owner_name,
+  };
+}
+
+async function recentArtworks(request, env) {
+  const rows = await env.DB.prepare(
+    "SELECT a.id, a.title, a.prompt, a.model, a.image_key, a.views, a.created_at, u.handle AS owner_handle, u.name AS owner_name FROM artworks a JOIN users u ON u.id = a.user_id WHERE a.status = 'active' ORDER BY a.created_at DESC LIMIT 12"
+  ).all();
+  return json({ artworks: (rows.results || []).map(publicCard) });
+}
+
+async function featuredWorks(request, env) {
+  const arts = await env.DB.prepare(
+    "SELECT a.id, a.title, a.prompt, a.model, a.image_key, a.views, a.created_at, u.handle AS owner_handle, u.name AS owner_name FROM artworks a JOIN users u ON u.id = a.user_id WHERE a.status = 'active' ORDER BY a.views DESC, a.created_at DESC LIMIT 20"
+  ).all();
+  const pages = await env.DB.prepare("SELECT page, views FROM page_views ORDER BY views DESC LIMIT 40").all();
+  return json({ artworks: (arts.results || []).map(publicCard), pages: (pages.results || []) });
+}
+
+async function trackPageView(request, env) {
+  let body;
+  try { body = await request.json(); } catch (e) { return json({ error: "Bad request" }, 400); }
+  const page = typeof body.page === "string" ? body.page.trim().toLowerCase() : "";
+  if (!/^[a-z0-9][a-z0-9-]{1,58}[a-z0-9]$/.test(page)) return json({ error: "Bad page" }, 400);
+  await env.DB.prepare("INSERT INTO page_views (page, views) VALUES (?, 1) ON CONFLICT(page) DO UPDATE SET views = views + 1").bind(page).run();
   return json({ ok: true });
 }
 
