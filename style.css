@@ -3063,3 +3063,15 @@ body[data-theme="light"] .category-icon svg [stroke] {
 body[data-theme="light"] .category-icon svg [fill]:not([fill="none"]) {
     fill: rgba(192, 83, 43, 0.12) !important;
 }
+
+/* Keep the compact category variant in the active theme. */
+#categories .category-card,
+#categories .category-card:hover {
+    background: var(--surface);
+    border-color: var(--border);
+}
+#categories .category-card strong { color: var(--text); }
+body[data-theme="light"] .eyebrow,
+body[data-theme="light"] .popular-searches,
+body[data-theme="light"] .popular-searches a { color: var(--muted); }
+body[data-theme="light"] .eyebrow { border-color: var(--border); }
