@@ -1355,4 +1355,4 @@ async function getPortfolio(request, env, handle) {
     artworks: (artworks.results || []).map(artworkRow),
     projects,
   });
-                   }
+}
