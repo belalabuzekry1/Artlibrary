@@ -3399,6 +3399,75 @@ body[data-theme="light"] .form-status.is-error { color: #b3261e; }
 
 #creation-edit-form .combo { position: relative; }
 
+.project-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.project-row:last-child { border-bottom: none; }
+
+.project-row img {
+    width: 56px;
+    height: 56px;
+    object-fit: cover;
+    border-radius: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    flex: none;
+}
+
+.project-row .project-meta { flex: 1; min-width: 0; }
+
+.project-row .project-meta strong {
+    display: block;
+    font-size: 15px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.project-row .project-meta span {
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.project-row .project-actions {
+    display: flex;
+    gap: 8px;
+    flex: none;
+}
+
+.project-row .project-rename {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+}
+
+.project-select {
+    margin-left: 8px;
+    padding: 9px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 14px;
+}
+
+.projects-empty {
+    font-size: 14px;
+    color: var(--muted);
+    margin: 10px 0 0;
+}
+
 .account-avatar-row {
     display: flex;
     align-items: center;
