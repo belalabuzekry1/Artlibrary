@@ -33,6 +33,7 @@
 <p class="creation-by">by <a id="creation-owner" href="#"></a> &middot; <span id="creation-views"></span></p>
 <p class="creation-meta" id="creation-model"></p>
 <div class="creation-tags" id="creation-tags"></div>
+<span class="creation-category" id="creation-category" hidden></span>
 <h2 id="creation-prompt-label">Prompt</h2>
 <div class="prompt-box" id="creation-prompt"></div>
 <button class="primary-button" id="creation-copy" type="button">Copy prompt</button>
@@ -49,6 +50,11 @@
 <button class="combo-toggle" id="edit-model-toggle" type="button" aria-label="Show models">&#9662;</button>
 <div class="combo-list" id="edit-model-listbox" role="listbox" hidden></div>
 </div>
+<label>Category
+<select name="category">
+<option value="">Auto (from title, prompt, tags)</option>
+</select>
+</label>
 <label>Tags
 <div class="chips-input" id="edit-tags-chips">
 <input id="edit-tags-field" type="text" maxlength="40" placeholder="Type a tag and press Enter">
