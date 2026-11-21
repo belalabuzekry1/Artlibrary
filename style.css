@@ -2843,6 +2843,125 @@ body[data-theme="light"] .artwork-meta span:first-child { color: #a04522; }
     box-shadow: 0 0 0 3px rgba(192, 83, 43, 0.18);
 }
 
+/* AI model combobox (dropdown list + free text) */
+.combo {
+    position: relative;
+}
+
+.combo input {
+    padding-right: 42px;
+}
+
+.combo-toggle {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: 0;
+    cursor: pointer;
+    color: var(--text);
+    opacity: 0.55;
+    font-size: 0.9rem;
+    padding: 4px 8px;
+}
+
+.combo-toggle:hover {
+    opacity: 1;
+}
+
+.combo-list {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    max-height: 220px;
+    overflow: auto;
+    z-index: 60;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+}
+
+.combo-option {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 10px 14px;
+    background: none;
+    border: 0;
+    cursor: pointer;
+    color: var(--text);
+    font: inherit;
+}
+
+.combo-option:hover {
+    background: var(--surface-2);
+}
+
+.combo-empty {
+    padding: 10px 14px;
+    opacity: 0.6;
+    font-size: 0.9rem;
+}
+
+/* Tags chips input */
+.chips-input {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    cursor: text;
+}
+
+.chips-input:focus-within {
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgba(192, 83, 43, 0.18);
+}
+
+.chips-input input {
+    border: 0;
+    outline: none;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    flex: 1;
+    min-width: 130px;
+    padding: 5px 2px;
+    box-shadow: none;
+}
+
+.tag-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 0.88rem;
+}
+
+.tag-chip-x {
+    background: none;
+    border: 0;
+    cursor: pointer;
+    color: var(--text);
+    opacity: 0.55;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 0;
+}
+
+.tag-chip-x:hover {
+    opacity: 1;
+}
+
 .auth-form .primary-button {
     border: 0;
     cursor: pointer;
