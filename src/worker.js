@@ -772,7 +772,7 @@ async function logout(request, env) {
 async function adminUsers(request, env) {
   if (!(await getAdminUser(request, env))) return notFound();
   const result = await env.DB.prepare(
-    "SELECT id, handle, email, created_at, password_hash, email_verified_at, deactivated_until, signup_city, signup_country, signup_device_type, last_login_at, last_login_city, last_login_country, last_login_device_type FROM users ORDER BY created_at DESC"
+    "SELECT id, handle, email, created_at, password_hash, email_verified_at, deactivated_until, signup_city, signup_country, signup_device_type, last_login_at, last_login_city, last_login_country, last_login_device_type, (SELECT COUNT(*) FROM artwork_reports r JOIN artworks a ON a.id = r.artwork_id WHERE a.user_id = users.id) AS report_count FROM users ORDER BY created_at DESC"
   ).all();
   const users = (result.results || []).map((row) => ({
     id: row.id,
@@ -780,6 +780,7 @@ async function adminUsers(request, env) {
     email: row.email,
     created_at: row.created_at,
     signup_method: row.password_hash === OAUTH_ONLY_PASSWORD ? "Google" : "Email",
+    report_count: row.report_count || 0,
     email_verified: !!row.email_verified_at,
     deactivated_until: row.deactivated_until || null,
     signup_city: row.signup_city,
@@ -1751,4 +1752,4 @@ async function getPortfolio(request, env, handle) {
     artworks: (artworks.results || []).map(function (r) { const c = artworkRow(r); c.likes = r.likes || 0; c.saves = r.saves || 0; return c; }),
     projects,
   });
-       }
+                                                                              }
