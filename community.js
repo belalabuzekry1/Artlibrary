@@ -156,6 +156,12 @@
             return r.json();
         }).then(function (data) {
             var u = data.user;
+            // The upload button is only for the owner looking at their own portfolio.
+            fetch("api/me", { credentials: "same-origin" }).then(function (r) { return r.ok ? r.json() : null; }).then(function (me) {
+                if (me && me.user && me.user.handle.toLowerCase() === u.handle.toLowerCase()) {
+                    document.getElementById("portfolio-upload").hidden = false;
+                }
+            }).catch(function () { /* visitor view */ });
             document.title = u.name + " (" + u.handle + ") | ArtLibrary";
             document.getElementById("portfolio-name").textContent = u.name;
             document.getElementById("portfolio-handle").textContent = "artlibrary.ai/" + u.handle;
