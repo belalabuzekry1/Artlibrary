@@ -69,6 +69,14 @@
 <tbody id="admin-deletions"></tbody>
 </table></div>
 </section>
+<section id="admin-reports-section" class="admin-insight-card" style="margin:22px 0" hidden>
+  <h2>Reported works</h2>
+  <p class="admin-insight-note">Latest first. Reported works stay visible; decide here what to do. New reports also arrive by email.</p>
+  <div class="admin-table-wrap"><table class="admin-table">
+<thead><tr><th>Work</th><th>Reason</th><th>Details</th><th>Reporter</th><th>When</th></tr></thead>
+<tbody id="admin-reports"></tbody>
+</table></div>
+</section>
 <div id="admin-table-wrap" class="admin-table-wrap" hidden>
 <table class="admin-table">
 <thead><tr><th>Username</th><th>Email</th><th>Signed up</th><th>At signup</th><th>Method</th><th>Email verified</th><th>Status</th><th>Latest sign-in</th></tr></thead>
@@ -225,6 +233,41 @@
       row.appendChild(cell(entry.email));
       row.appendChild(cell(entry.mode === "permanent" ? "Deleted permanently" : "Deactivated for " + ({ day: "1 day", week: "1 week", month: "1 month", "3months": "3 months" }[entry.period] || entry.period)));
       row.appendChild(cell(entry.reason));
+      row.appendChild(cell(dateTime(entry.created_at)));
+      body.appendChild(row);
+    });
+    section.hidden = false;
+  }).catch(function () { /* dashboard extra; ignore */ });
+  fetch("/api/admin/reports", { credentials: "same-origin", cache: "no-store" }).then(function (response) {
+    return response.ok ? response.json() : null;
+  }).then(function (data) {
+    if (!data || !data.reports || !data.reports.length) return;
+    var section = document.getElementById("admin-reports-section");
+    var body = document.getElementById("admin-reports");
+    var reasons = { nudity: "Nudity", sexual: "Sexual activity", racism: "Racism or hate", bullying: "Bullying or harassment", other: "Something else" };
+    data.reports.forEach(function (entry) {
+      var row = document.createElement("tr");
+      var work = entry.artwork_id.indexOf("static:") === 0
+        ? entry.artwork_id.slice(7) + " (catalog page)"
+        : (entry.title || entry.artwork_id);
+      var workCell = cell(work);
+      if (entry.artwork_id.indexOf("static:") === 0) {
+        var link = document.createElement("a");
+        link.href = "/art/" + entry.artwork_id.slice(7) + ".html";
+        link.textContent = work;
+        workCell.textContent = "";
+        workCell.appendChild(link);
+      } else {
+        var link2 = document.createElement("a");
+        link2.href = "/creation.html?id=" + encodeURIComponent(entry.artwork_id);
+        link2.textContent = work;
+        workCell.textContent = "";
+        workCell.appendChild(link2);
+      }
+      row.appendChild(workCell);
+      row.appendChild(cell(reasons[entry.reason] || entry.reason));
+      row.appendChild(cell(entry.details || "-"));
+      row.appendChild(cell(entry.reporter || "-"));
       row.appendChild(cell(dateTime(entry.created_at)));
       body.appendChild(row);
     });
